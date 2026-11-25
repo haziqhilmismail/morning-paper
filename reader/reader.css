@@ -11,6 +11,8 @@
 @media (prefers-color-scheme: dark) {
 	:root { --bg: #161513; --fg: #e8e4dc; --muted: #9a958c; --line: #2f2c27; --accent: #e8a33d; }
 }
+/* The front page is a printed page, so the whole page stays light in dark mode too. */
+:root:has(body.front) { color-scheme: light; --bg: #fbf8f2; --fg: #1f1f1f; --muted: #6b665e; --line: #e2dccf; --accent: #9a5b12; }
 
 html {
 	background: var(--bg);
