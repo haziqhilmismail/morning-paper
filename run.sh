@@ -69,4 +69,5 @@ now=$(date -u +%FT%TZ)
   echo '</feed>'
 } > www/.opds.xml
 mv www/.opds.xml www/opds.xml
+python3 reader.py
 echo "published $(date -Is)"
