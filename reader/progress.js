@@ -15,7 +15,7 @@
 	function useCode(code) {
 		const [key, ...name] = code.trim().split(":");
 		data.key = key || undefined;
-		if (name.length) data.name = name.join(":").trim() || data.name;
+		if (name.length) data.name = name.join(":").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || data.name;
 	}
 	const fromLink = new URLSearchParams(location.hash.slice(1)).get("sync");
 	if (fromLink) {
