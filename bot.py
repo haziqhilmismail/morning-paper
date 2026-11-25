@@ -20,6 +20,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SHARED = HERE / "data" / "shared.tsv"
+ARCHIVE = HERE / "data" / "archive.tsv"
 FEED = HERE / "www" / "feeds" / "shared.xml"
 URL = re.compile(r"https?://[^\s<>\"]+")
 ARTICLES = HERE / "data" / "shared"
@@ -75,9 +76,44 @@ def fetch(url):
     return title or url
 
 
+def read(path):
+    return [ln.split("\t") for ln in path.read_text().splitlines() if ln.strip()] if path.exists() else []
+
+
+def save(path, rows):
+    tmp = path.with_name(f".{path.name}")
+    tmp.write_text("".join("\t".join(r) + "\n" for r in rows))
+    tmp.replace(path)
+
+
+def name(row):
+    return row[2] if len(row) > 2 else row[1]
+
+
+def numbered(path, empty):
+    """Newest first, so number 1 is the link that you sent last."""
+    rows = read(path)[::-1]
+    return "\n".join(f"{i}. {name(r)}" for i, r in enumerate(rows, 1)) or empty
+
+
+def remove(args, archive):
+    rows = read(SHARED)[::-1]
+    picks = {int(a) for a in args if a.isdigit() and 1 <= int(a) <= len(rows)}
+    if not picks:
+        return "Send the command with numbers from /list, for example /delete 2 or /archive 1 3."
+    gone = [r for i, r in enumerate(rows, 1) if i in picks]
+    save(SHARED, [r for i, r in enumerate(rows, 1) if i not in picks][::-1])
+    if archive:
+        with ARCHIVE.open("a") as f:
+            f.writelines("\t".join(r) + "\n" for r in gone[::-1])
+    write_feed()
+    verb = "Archived" if archive else "Deleted"
+    return f"{verb} from the Shared feed:\n" + "\n".join(f"- {name(r)}" for r in gone) + \
+        "\nCopies already on the e-reader stay there."
+
+
 def write_feed():
-    rows = [ln.split("\t") for ln in SHARED.read_text().splitlines() if ln.strip()] if SHARED.exists() else []
-    rows = rows[-KEEP:]
+    rows = read(SHARED)[-KEEP:]
     for old in ARTICLES.glob("*.html") if ARTICLES.exists() else []:
         if old not in {page(r[1]) for r in rows}:
             old.unlink()
@@ -89,7 +125,7 @@ def write_feed():
         return f'{text}<p><a href="{html.escape(url)}">{html.escape(url)}</a></p>'.replace("]]>", "]]&gt;")
 
     items = "".join(
-        f"<item><title>{html.escape(r[2] if len(r) > 2 else r[1])}</title><link>{html.escape(r[1])}</link>"
+        f"<item><title>{html.escape(name(r))}</title><link>{html.escape(r[1])}</link>"
         f"<guid>{html.escape(r[1])}</guid><description><![CDATA[{body(r[1])}]]></description>"
         f"<pubDate>{format_datetime(datetime.fromisoformat(r[0]).replace(tzinfo=timezone.utc))}</pubDate></item>"
         for r in reversed(rows))
@@ -106,12 +142,21 @@ def write_feed():
 
 def handle(msg):
     text = (msg.get("text") or "").strip()
-    if text.split()[:1] == ["/now"]:
+    cmd, *args = text.split() or [""]
+    cmd = cmd.split("@")[0]
+    if cmd == "/now":
         subprocess.run(["systemctl", "--user", "start", "--no-block", "morning-paper.service"], check=True)
         return "Building the paper now. It is ready in about 10 minutes."
+    if cmd == "/list":
+        return numbered(SHARED, "The Shared feed is empty.")
+    if cmd == "/archived":
+        return numbered(ARCHIVE, "The archive is empty.")
+    if cmd in ("/archive", "/delete"):
+        return remove(args, archive=cmd == "/archive")
     urls = links(msg)
     if not urls:
-        return "Send me an article link. /now rebuilds the paper at once."
+        return ("Send me an article link to add it to the Shared feed.\n/list shows the feed. /archive N and /delete N "
+                "remove link N from it. /archived shows the archive. /now rebuilds the paper.")
     with SHARED.open("a") as f:
         f.writelines(f"{date.today().isoformat()}\t{u}\t{fetch(u).replace(chr(9), ' ')}\n" for u in urls)
     write_feed()
@@ -123,6 +168,12 @@ def main():
     time.tzset()
     chat_id = int(os.environ["PAPER_BOT_CHAT_ID"])
     write_feed()
+    commands = [("list", "Show the Shared feed"), ("archive", "Archive links by number"), ("delete", "Delete links by number"),
+                ("archived", "Show the archive"), ("now", "Rebuild the paper")]
+    try:
+        api("setMyCommands", commands=[{"command": c, "description": d} for c, d in commands])
+    except OSError as e:
+        print(f"setMyCommands failed: {e}", flush=True)
     offset = 0
     while True:
         try:
