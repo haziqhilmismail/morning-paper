@@ -17,6 +17,7 @@ import urllib.request
 from datetime import date, datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 HERE = Path(__file__).resolve().parent
 SHARED = HERE / "data" / "shared.tsv"
@@ -102,10 +103,13 @@ def view(archived=False):
         return {"text": "The archive is empty." if archived else "The Shared feed is empty. Send me a link."}
     head = "Archive" if archived else f"Shared feed ({len(rows)} of {KEEP})"
     acts = [("♻️ Restore", "r")] if archived else [("🗄 Archive", "a"), ("🗑 Delete", "d")]
-    return {"text": head + "\n\n" + "\n".join(f"{i}. {name(r)}" for i, r in enumerate(rows, 1)),
+    items = "\n\n".join(
+        f'{i}. <a href="{html.escape(r[1])}">{html.escape(name(r))}</a>\n'
+        f"🌐 {html.escape(urlparse(r[1]).netloc.removeprefix('www.'))} · 📅 added {date.fromisoformat(r[0]):%a %-d %b %Y}"
+        for i, r in enumerate(rows, 1))
+    return {"text": f"<b>{head}</b>\n\n{items}", "parse_mode": "HTML", "link_preview_options": {"is_disabled": True},
             "reply_markup": {"inline_keyboard": [
-                [{"text": f"{label} {i}", "callback_data": f"{c}:{lid(r[1])}"} for label, c in acts] + [{"text": "🔗", "url": r[1]}]
-                for i, r in enumerate(rows, 1)]}}
+                [{"text": f"{label} {i}", "callback_data": f"{c}:{lid(r[1])}"} for label, c in acts] for i, r in enumerate(rows, 1)]}}
 
 
 def add(rows):
@@ -192,7 +196,7 @@ def handle(msg):
     old = add(new)
     note = "".join(f"\nMoved the oldest link to the archive: {name(r)}" for r in old)
     reply = view()
-    reply["text"] = "Added: " + ", ".join(name(r) for r in new) + note + "\n\n" + reply["text"]
+    reply["text"] = html.escape("Added: " + ", ".join(name(r) for r in new) + note) + "\n\n" + reply["text"]
     return reply
 
 

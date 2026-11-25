@@ -173,7 +173,7 @@ A banner asks you to install the reader as an app. On an iPhone, it tells you to
 
 The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xml`. The feed holds the 10 newest links. When you send link 11, the bot moves the oldest link to the archive. The bot fetches each article on the server and puts its text in the feed. Entry 7 of `feed_config.lua` reads it, and News Downloader saves each article in a `Shared` folder. The e-reader opens no other site. The links do not go into the paper.
 
-The bot shows a menu with 3 buttons: **📋 Feed**, **🗄 Archive** and **🗞 Rebuild paper**. The feed and the archive list each link with buttons: **Archive**, **Delete** and **🔗** (open the link) in the feed, and **Restore** in the archive. The commands `/list`, `/archived` and `/now` do the same as the menu.
+The bot shows a menu with 3 buttons: **📋 Feed**, **🗄 Archive** and **🗞 Rebuild paper**. The feed and the archive list each link with buttons: **Archive** and **Delete** in the feed, and **Restore** in the archive. Each link shows its title (tap it to open the article), its site and the date that you added it. The commands `/list`, `/archived` and `/now` do the same as the menu.
 
 **Archive** and **Delete** change only the feed. KOReader keeps the articles that it already downloaded.
 
