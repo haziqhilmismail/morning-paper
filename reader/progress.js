@@ -49,6 +49,7 @@
 				bar.style.transform = `scaleX(${now / 100})`;
 				it.progress = Math.max(it.progress, now);
 				it.pos = end > 0 ? scrollY / end : 0;
+				it.last = Date.now();
 			};
 			// Reopen at the last position, unless the article was read to the end.
 			addEventListener("load", () => {
