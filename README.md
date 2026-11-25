@@ -163,7 +163,7 @@ The curation uses the posts and books that you read as 40% of the picks. Without
 
 ## Read the paper on your phone
 
-Open `https://paper.example.com/read/` in the phone browser and log in. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
+Open `https://paper.example.com/read/` in the phone browser. The reader has no password, because an iPhone home-screen app asks for it again on each start. Anyone with the address can read it, but search engines get a `noindex` header. The EPUB files, the catalog, the feeds and WebDAV still need the password. To keep the reader private, remove the `@private` matcher from `basic_auth` in the `Caddyfile`. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
 
 A banner asks you to install the reader as an app. On an iPhone, it tells you to tap **Share** and then **Add to Home Screen**, because Safari has no install prompt for websites. In Chrome and Edge, it shows an **Install** button. If you close the banner, it stays hidden for 7 days. Pages that you opened once also open without a connection.
 
