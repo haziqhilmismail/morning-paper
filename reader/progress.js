@@ -11,9 +11,10 @@
 	const save = () => { try { localStorage.setItem(STORE, JSON.stringify(data)); } catch {} };
 
 	// The sync key comes once in the link (#sync=...) and stays on this device only.
-	const fromLink = location.hash.match(/sync=([\w-]+)/);
-	if (fromLink) {
-		data.key = fromLink[1];
+	const fromLink = new URLSearchParams(location.hash.slice(1));
+	if (fromLink.get("sync")) {
+		data.key = fromLink.get("sync");
+		data.name = fromLink.get("name") || data.name;
 		history.replaceState(null, "", location.pathname);
 	}
 	save();
@@ -25,7 +26,7 @@
 			method: "PUT",
 			keepalive: true,
 			headers: { Authorization: "Basic " + btoa("sync:" + data.key), "Content-Type": "application/json" },
-			body: JSON.stringify({ device: data.device, items: data.items }),
+			body: JSON.stringify({ device: data.device, name: data.name, items: data.items }),
 		}).catch(() => {});
 	}
 
@@ -88,6 +89,7 @@
 				const key = prompt("Paste the sync key. Send /synckey to the Telegram bot to get it. Without a key, your progress stays on this device only. Leave it empty to turn sync off.", data.key || "");
 				if (key === null) return;
 				data.key = key.trim() || undefined;
+				if (data.key) data.name = prompt("Name this device, as you told the bot:", data.name || "")?.trim() || data.name;
 				save();
 				push();
 				link.textContent = data.key ? "Sync on" : "Turn on sync";

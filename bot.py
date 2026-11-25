@@ -14,6 +14,7 @@ import re
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import date, datetime, timezone
 from email.utils import format_datetime
@@ -183,20 +184,31 @@ HELP = ("Send me an article link. I add it to the Shared feed, and News Download
         f"The feed keeps the {KEEP} newest links. Older links move to the archive. Links already on the e-reader stay there.")
 
 
+ASK_NAME = "Which device is the sync key for? Reply with a name, for example iPhone or Work PC."
+
+
+def sync_key(name):
+    key = os.environ.get("READER_SYNC_KEY", "")
+    if not key:
+        return {"text": "No sync key is set. Put READER_SYNC_KEY in .env on the server."}
+    link = f"{os.environ.get('PAPER_URL', '')}/read/#sync={key}&name={urllib.parse.quote(name)}"
+    return {"text": f"Sync key for {name} (keep it private):\n\n{key}\n\n"
+                    f"In the reader on {name}, tap \"Turn on sync\" at the bottom of the editions list, paste the key, "
+                    f"and type {name} as the device name. In a browser, you can open this link once instead:\n{link}",
+            "link_preview_options": {"is_disabled": True}}
+
+
 def handle(msg):
     text = (msg.get("text") or "").strip()
     cmd = (text.split() or [""])[0].split("@")[0]
+    # The answer to ASK_NAME: Telegram marks it as a reply to that question (force_reply).
+    if (msg.get("reply_to_message") or {}).get("text") == ASK_NAME and text and not text.startswith("/"):
+        return sync_key(" ".join(text.split())[:40])
     if cmd in ("/now", "🗞"):
         subprocess.run(["systemctl", "--user", "start", "--no-block", "morning-paper.service"], check=True)
         return {"text": "Building the paper now. It is ready in about 10 minutes."}
     if cmd == "/synckey":
-        key = os.environ.get("READER_SYNC_KEY", "")
-        if not key:
-            return {"text": "No sync key is set. Put READER_SYNC_KEY in .env on the server."}
-        return {"text": f"Sync key for the Morning Paper reader (keep it private):\n\n{key}\n\n"
-                        "In the reader, tap \"Turn on sync\" at the bottom of the editions list and paste it. "
-                        f"In a browser, you can also open this link once:\n{os.environ.get('PAPER_URL', '')}/read/#sync={key}",
-                "link_preview_options": {"is_disabled": True}}
+        return {"text": ASK_NAME, "reply_markup": {"force_reply": True, "input_field_placeholder": "Device name"}}
     if cmd in ("/list", "📋"):
         return view()
     if cmd in ("/archived", "🗄"):
