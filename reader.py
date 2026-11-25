@@ -63,7 +63,10 @@ def unpack(epub: Path, out: Path) -> None:
                 top = "" if name == "frontpage.xhtml" else (
                     '<nav><a href="frontpage.xhtml">← Front page</a><a href="../">All editions</a></nav>')
                 body = '<body class="front">' if name == "frontpage.xhtml" else '<body class="article">'
-                text = data.decode().replace("<head>", HEAD.format(up="../"), 1)
+                head = HEAD.format(up="../")
+                if name == "frontpage.xhtml":
+                    head = head.replace('content="#161513"', 'content="#fbf8f2"')
+                text = data.decode().replace("<head>", head, 1)
                 text = text.replace("<body>", body + top + "<main>", 1)
                 text = text.replace("</body>", "</main>" + footer(out.name, page_links(name, articles)) + "</body>", 1)
                 data = text.encode()
