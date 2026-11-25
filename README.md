@@ -151,7 +151,7 @@ Do these steps on the e-reader. Use the user name and the password from your `Ca
 2. Put the file in the News Downloader download folder on the reader. The default folder is `koreader/news/`. You can use a USB cable, or KOReader **Cloud storage** (step 1 of the next section). KOReader shows only book files, so give the file a `.txt` name on the server, download it, and rename it to `feed_config.lua`. To see the renamed file, turn on **Show unsupported files** in the file browser settings.
 3. Open ☰, then **News downloader**, then **Sync news feeds**.
 
-The file lists 6 fixed slot URLs and the Shared feed, so you do not copy it again when you change `feeds.txt`. Each feed gets a folder with the feed's own title.
+The file lists 6 fixed slot URLs, the Shared feed and the Morning Paper feed, so you do not copy it again when you change `feeds.txt`. The Morning Paper feed (`www/feeds/paper.xml`) links each edition's EPUB, so one **Sync news feeds** also gets the paper, and you do not need OPDS sync. `run.sh` writes this feed only when `PAPER_URL` is set in `.env`. Each feed gets a folder with the feed's own title.
 
 ### Optional: send your reading statistics
 
@@ -194,6 +194,7 @@ The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xm
 
 | Variable | Used by | Meaning |
 |---|---|---|
+| `PAPER_URL` | `run.sh` | Optional. The address where the e-reader reaches `paper-web`, for example `https://paper.example.com`. If it is set, `run.sh` writes the Morning Paper feed for News Downloader. |
 | `PAPER_TZ` | `run.sh`, `curate.sh` | IANA time zone for the masthead date, the 7-day window and the curation cutoff. The default is `UTC`. |
 | `READING_SINCE` | `curate.sh` | Optional. The curation counts KOReader reading only from this date (`YYYY-MM-DD`). Use it when the reader had an earlier owner. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | `curate.sh` | The token for the Claude CLI. |
