@@ -176,7 +176,7 @@ A banner asks you to install the reader as an app. On an iPhone, it tells you to
 
 ## Use the Telegram bot
 
-The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xml`. The feed holds the 20 newest links. Entry 7 of `feed_config.lua` reads it, and News Downloader saves each full article in a `Shared` folder. The links do not go into the paper. The command `/now` starts a new build of the paper.
+The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xml`. The feed holds the 20 newest links. The bot fetches each article on the server and puts its text in the feed. Entry 7 of `feed_config.lua` reads it, and News Downloader saves each article in a `Shared` folder. The e-reader opens no other site. The links do not go into the paper. The command `/now` starts a new build of the paper.
 
 1. Make a bot with [@BotFather](https://t.me/BotFather), and put its token in `PAPER_BOT_TOKEN` in `.env`.
 2. Put your own chat id in `PAPER_BOT_CHAT_ID`. The bot ignores messages from other chats.
