@@ -17,4 +17,9 @@
 			hide .*
 		}
 	}
+	# An empty 401 with no Content-Type makes some phone browsers download a file instead of asking for the login.
+	handle_errors 401 {
+		header Content-Type "text/html; charset=utf-8"
+		respond "<!doctype html><title>Login required</title><p>Log in to read the paper.</p>" 401
+	}
 }
