@@ -22,11 +22,14 @@ instructions+=" Hard rule: open each article and check its publish date. Give it
   echo; echo "MY FEEDS (feed names and recent post titles):"
   grep -oh '<title><!\[CDATA\[[^]]*' www/feeds/*.xml 2>/dev/null | sed 's/.*CDATA\[//' || true
   echo; echo "MY E-READER BOOKS (title | authors | minutes read, last 30 days):"
-  # KOReader statistics plugin syncs this file over WebDAV (paper-dav).
+  # KOReader statistics plugin syncs this file over WebDAV (paper-dav). The paper itself is left out, so it does not pick articles like its own.
+  since=${READING_SINCE:-1970-01-01}
+  [[ $since =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || since=1970-01-01
   sqlite3 -readonly -separator " | " data/koreader/statistics.sqlite3 \
     "SELECT b.title, replace(b.authors, char(10), ', '), sum(p.duration) / 60 FROM page_stat_data p
-     JOIN book b ON b.id = p.id_book WHERE p.start_time > strftime('%s', 'now', '-30 days')
-     GROUP BY b.id ORDER BY sum(p.duration) DESC LIMIT 15" 2>/dev/null || true
+     JOIN book b ON b.id = p.id_book WHERE p.start_time > max(strftime('%s', 'now', '-30 days'), strftime('%s', '$since', 'utc'))
+       AND b.title NOT IN ('KOReader Quickstart Guide', 'feed_config', 'Morning Paper', 'Read Later')
+     GROUP BY b.id HAVING sum(p.duration) >= 60 ORDER BY sum(p.duration) DESC LIMIT 15" 2>/dev/null || true
 } | "${claude[@]}" -p "$instructions" --model opus --tools "WebSearch,WebFetch" --allowedTools "WebSearch,WebFetch" \
       --permission-mode default --strict-mcp-config \
   | grep -oE 'https://[^[:space:]<>()"]+' | sed 's/[.,;]$//' \
