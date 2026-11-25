@@ -184,7 +184,7 @@ HELP = ("Send me an article link. I add it to the Shared feed, and News Download
         f"The feed keeps the {KEEP} newest links. Older links move to the archive. Links already on the e-reader stay there.")
 
 
-ASK_NAME = "Which device is the sync key for? Reply with a name, for example iPhone or Work PC."
+ASK_NAME = "Which device is the sync code for? Reply with a name, for example iphone or work-pc."
 
 
 def sync_key(name):
@@ -206,7 +206,9 @@ def handle(msg):
     cmd = (text.split() or [""])[0].split("@")[0]
     # The answer to ASK_NAME: Telegram marks it as a reply to that question (force_reply).
     if (msg.get("reply_to_message") or {}).get("text") == ASK_NAME and text and not text.startswith("/"):
-        return sync_key(" ".join(text.split())[:40])
+        # Device names are lower case with no spaces, for example "work-pc".
+        name = re.sub(r"[^a-z0-9-]+", "-", text.lower()).strip("-")[:30]
+        return sync_key(name or "device")
     if cmd in ("/now", "🗞"):
         subprocess.run(["systemctl", "--user", "start", "--no-block", "morning-paper.service"], check=True)
         return {"text": "Building the paper now. It is ready in about 10 minutes."}
