@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 set -a; . ./.env; set +a
 export TZ="${PAPER_TZ:-UTC}"
+: "${PAPER_URL:?set PAPER_URL in .env}"
 exec 9>data/.lock
 flock -n 9 || { echo "already running"; exit 0; }
 
@@ -37,8 +38,7 @@ if [ -n "$pruned" ]; then
   py scripts/kobo-digest-build.py
 fi
 
-# One file and one catalog entry per edition, so KOReader's OPDS sync sees each edition as new.
-# KOReader sync expects the newest entry first.
+# One file per edition, so News Downloader sees each edition as new.
 day=$(date +%F)
 no=$(cat data/edition.txt)
 name="morning-paper-$day-no$no"
@@ -47,36 +47,16 @@ cp data/read-later.epub "www/editions/.$name.epub"; mv "www/editions/.$name.epub
 cp data/cover.jpg "www/editions/.$name.jpg"; mv "www/editions/.$name.jpg" "www/editions/$name.jpg"
 # Keep the 7 newest editions on the server; the reader keeps its own copies.
 ls -1 www/editions/*.epub | sort -V -r | tail -n +8 | sed 's/\.epub$//' | while read -r old; do rm -f "$old.epub" "$old.jpg"; done
-now=$(date -u +%FT%TZ)
+# News Downloader saves a feed link that returns an EPUB as a book, and it needs full URLs.
 {
   echo '<?xml version="1.0" encoding="UTF-8"?>'
-  echo '<feed xmlns="http://www.w3.org/2005/Atom">'
-  echo "  <id>urn:morning-paper</id><title>Morning Paper</title><updated>$now</updated>"
-  echo '  <author><name>morning-paper</name></author>'
-  echo '  <link rel="self" href="/opds.xml" type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>'
+  echo "<rss version=\"2.0\"><channel><title>Morning Paper</title><link>$PAPER_URL/read/</link><description>Morning Paper editions</description>"
   for f in $(ls -1 www/editions/*.epub | sort -V -r); do
     n=$(basename "$f" .epub); d=${n#morning-paper-}; d=${d%-no*}; e=${n##*-no}
-    echo "  <entry><title>The Morning Paper $d No. $e</title><id>urn:morning-paper:$n</id><updated>$(date -u -r "$f" +%FT%TZ)</updated>"
-    echo "    <author><name>Articles</name></author>"
-    echo "    <link rel=\"http://opds-spec.org/image\" href=\"/editions/$n.jpg\" type=\"image/jpeg\"/>"
-    echo "    <link rel=\"http://opds-spec.org/acquisition\" href=\"/editions/$n.epub\" type=\"application/epub+zip\"/></entry>"
+    echo "<item><title>Morning Paper $d No. $e</title><link>$PAPER_URL/editions/$n.epub</link><guid>$n</guid><pubDate>$(date -u -R -r "$f")</pubDate></item>"
   done
-  echo '</feed>'
-} > www/.opds.xml
-mv www/.opds.xml www/opds.xml
-# The same editions as an RSS feed, so one News Downloader sync gets the paper with the other feeds.
-# News Downloader saves a link that returns an EPUB as a book, and it needs full URLs.
-if [ -n "${PAPER_URL:-}" ]; then
-  {
-    echo '<?xml version="1.0" encoding="UTF-8"?>'
-    echo "<rss version=\"2.0\"><channel><title>Morning Paper</title><link>$PAPER_URL/read/</link><description>Morning Paper editions</description>"
-    for f in $(ls -1 www/editions/*.epub | sort -V -r); do
-      n=$(basename "$f" .epub); d=${n#morning-paper-}; d=${d%-no*}; e=${n##*-no}
-      echo "<item><title>Morning Paper $d No. $e</title><link>$PAPER_URL/editions/$n.epub</link><guid>$n</guid><pubDate>$(date -u -R -r "$f")</pubDate></item>"
-    done
-    echo '</channel></rss>'
-  } > www/feeds/.paper.xml
-  mv www/feeds/.paper.xml www/feeds/paper.xml
-fi
+  echo '</channel></rss>'
+} > www/feeds/.paper.xml
+mv www/feeds/.paper.xml www/feeds/paper.xml
 python3 reader.py
 echo "published $(date -Is)"

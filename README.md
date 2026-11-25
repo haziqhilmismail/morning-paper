@@ -6,7 +6,7 @@ Morning Paper makes one EPUB newspaper each morning from articles that Claude pi
 
 ![The front page of a sample edition](docs/front-page.jpg)
 
-Based on [jstriblet/kobo-morning-paper](https://github.com/jstriblet/kobo-morning-paper) (MIT). That project makes the EPUB. This project adds the curation, the OPDS catalog for KOReader, the feed slots and the Telegram bot.
+Based on [jstriblet/kobo-morning-paper](https://github.com/jstriblet/kobo-morning-paper) (MIT). That project makes the EPUB. This project adds the curation, the feeds for KOReader's News Downloader, the phone reader and the Telegram bot.
 
 ## How a daily run works
 
@@ -25,7 +25,7 @@ flowchart TD
 		queue["data/queue.txt<br/>about 10 URLs"]
 		build["Upstream build in Docker<br/>upstream/ mounted read-only"]
 		prune["prune_short.py<br/>drops articles under 400 words"]
-		publish["www/editions/*.epub, www/opds.xml<br/>reader.py: www/read/"]
+		publish["www/editions/*.epub, www/feeds/paper.xml<br/>reader.py: www/read/"]
 		feedspy --> curate --> queue --> build --> prune --> publish
 	end
 
@@ -34,7 +34,7 @@ flowchart TD
 	shared --> web
 
 	publish --> web["paper-web (Caddy)<br/>password"]
-	web --> koreader["KOReader<br/>OPDS sync and News Downloader"]
+	web --> koreader["KOReader<br/>News Downloader"]
 	web --> phone["Phone browser<br/>/read/"]
 	koreader -- "reading statistics over WebDAV, /dav" --> web
 	web --> dav["paper-dav (rclone WebDAV)"] --> stats
@@ -47,10 +47,10 @@ Each run does these steps:
 3. Claude returns the URLs to `data/queue.txt`.
 4. The upstream build fetches each URL, extracts the text, and makes an EPUB with a front page. Articles that are older than 7 days are not included.
 5. `prune_short.py` removes articles with fewer than 400 words, because those are usually paywall previews. If it removes one, the build runs again.
-6. `run.sh` copies the EPUB to `www/editions/` and writes `www/opds.xml`. The catalog lists the 7 newest editions, newest first.
+6. `run.sh` copies the EPUB to `www/editions/` and writes `www/feeds/paper.xml`, a feed of the 7 newest editions.
 7. `reader.py` turns each edition into web pages in `www/read/`, for a phone browser.
 
-The `paper-web` container serves `www/` behind a password. KOReader reads the OPDS catalog and downloads each new edition.
+The `paper-web` container serves `www/` behind a password. One News Downloader sync in KOReader gets the new edition, your feeds and the links that you shared.
 
 ### What is this project and what is upstream
 
@@ -93,7 +93,7 @@ flowchart LR
 	chmod 600 .env
 	```
 
-3. Edit `.env`. Set `PAPER_TZ` to your time zone. Set `CLAUDE_CODE_OAUTH_TOKEN` to a token from `claude setup-token`.
+3. Edit `.env`. Set `PAPER_URL` to the address where your reader reaches `paper-web`. Set `PAPER_TZ` to your time zone. Set `CLAUDE_CODE_OAUTH_TOKEN` to a token from `claude setup-token`.
 4. Write your topics in `my-prompt.txt`. Put up to 6 feeds in `feeds.txt`.
 5. Make a password hash for the web server, and paste it into `Caddyfile` in place of `<paste-the-hash-here>`.
 
@@ -141,17 +141,12 @@ flowchart LR
 
 Do these steps on the e-reader. Use the user name and the password from your `Caddyfile`. In the examples, `https://paper.example.com` is the address where your reader reaches `paper-web`.
 
-1. Add the catalog. Open the top menu, then the search icon, then **OPDS catalog**. Tap **+**, and enter `https://paper.example.com/opds.xml` with your user name and password.
-2. Turn on sync. Long-press the catalog, tap **Edit**, and tick **Sync catalog**. Set a sync folder, for example `Morning Paper`. If you do not see **Sync catalog**, update KOReader. OPDS sync came in 2025.
-3. Each morning, open the catalog menu and tap **Sync**. KOReader downloads each edition that it does not have yet.
-
-### Optional: read your feeds with News Downloader
-
 1. Copy `koreader/feed_config.lua.example` to `koreader/feed_config.lua`. Replace the address, the user name and the password.
-2. Put the file in the News Downloader download folder on the reader. The default folder is `koreader/news/`. You can use a USB cable, or KOReader **Cloud storage** (step 1 of the next section). KOReader shows only book files, so give the file a `.txt` name on the server, download it, and rename it to `feed_config.lua`. To see the renamed file, turn on **Show unsupported files** in the file browser settings.
-3. Open ☰, then **News downloader**, then **Sync news feeds**.
+2. Open ☰, then **News downloader**, then **Settings**, then **Set download folder**. Choose a folder, for example `Feeds`.
+3. Put `feed_config.lua` in that folder. You can use a USB cable, or KOReader **Cloud storage** (step 1 of the next section). KOReader shows only book files, so give the file a `.txt` name on the server, download it, and rename it to `feed_config.lua`. To see the renamed file, turn on **Show unsupported files** in the file browser settings.
+4. Each morning, open ☰, then **News downloader**, then **Sync news feeds**.
 
-The file lists 6 fixed slot URLs, the Shared feed and the Morning Paper feed, so you do not copy it again when you change `feeds.txt`. The Morning Paper feed (`www/feeds/paper.xml`) links each edition's EPUB, so one **Sync news feeds** also gets the paper, and you do not need OPDS sync. `run.sh` writes this feed only when `PAPER_URL` is set in `.env`. Each feed gets a folder with the feed's own title.
+One sync gets the new edition, the 6 feed slots and the Shared feed. Each feed gets a folder with the feed's own title, and the editions go to `Morning Paper`. The file lists fixed URLs, so you do not copy it again when you change `feeds.txt`. KOReader never deletes the editions and posts that it downloaded.
 
 ### Optional: send your reading statistics
 
@@ -163,14 +158,14 @@ The curation uses the posts and books that you read as 40% of the picks. Without
 
 ## Read the paper on your phone
 
-Open `https://paper.example.com/read/` in the phone browser. The reader has no password, because an iPhone home-screen app asks for it again on each start. Anyone with the address can read it, but search engines get a `noindex` header. The EPUB files, the catalog, the feeds and WebDAV still need the password. To keep the reader private, remove the `@private` matcher from `basic_auth` in the `Caddyfile`. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
+Open `https://paper.example.com/read/` in the phone browser. The reader has no password, because an iPhone home-screen app asks for it again on each start. Anyone with the address can read it, but search engines get a `noindex` header. The EPUB files, the feeds and WebDAV still need the password. To keep the reader private, remove the `@private` matcher from `basic_auth` in the `Caddyfile`. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
 
 A banner asks you to install the reader as an app. On an iPhone, it tells you to tap **Share** and then **Add to Home Screen**, because Safari has no install prompt for websites. In Chrome and Edge, it shows an **Install** button. If you close the banner, it stays hidden for 7 days. Pages that you opened once also open without a connection.
 
 ## Check that it works
 
 1. Run `systemctl --user list-timers morning-paper.timer`. The **NEXT** column shows the next run.
-2. Run `curl -u reader:your-password http://127.0.0.1:8092/opds.xml`. The output lists one `<entry>` for each edition.
+2. Run `curl -u reader:your-password http://127.0.0.1:8092/feeds/paper.xml`. The output lists one `<item>` for each edition.
 3. Read `data/build.log`. Each article has a `stored:` line. An article that is too old has an `excluded stale` line.
 4. If a run fails, read its output with `journalctl --user -u morning-paper.service`.
 
@@ -194,7 +189,7 @@ The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xm
 
 | Variable | Used by | Meaning |
 |---|---|---|
-| `PAPER_URL` | `run.sh` | Optional. The address where the e-reader reaches `paper-web`, for example `https://paper.example.com`. If it is set, `run.sh` writes the Morning Paper feed for News Downloader. |
+| `PAPER_URL` | `run.sh` | The address where the e-reader reaches `paper-web`, for example `https://paper.example.com`. The Morning Paper feed needs full URLs. |
 | `PAPER_TZ` | `run.sh`, `curate.sh` | IANA time zone for the masthead date, the 7-day window and the curation cutoff. The default is `UTC`. |
 | `READING_SINCE` | `curate.sh` | Optional. The curation counts KOReader reading only from this date (`YYYY-MM-DD`). Use it when the reader had an earlier owner. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | `curate.sh` | The token for the Claude CLI. |
@@ -220,7 +215,7 @@ The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xm
 |---|---|
 | `upstream/` | A clone of `jstriblet/kobo-morning-paper` at the tested commit. `run.sh` clones it when it is missing. |
 | `data/` | The queue, the stored articles, `build.log`, the edition number, and the KOReader statistics in `data/koreader/`. |
-| `www/` | The files that `paper-web` serves: `opds.xml`, `editions/`, `feeds/` and the phone reader in `read/`. |
+| `www/` | The files that `paper-web` serves: `editions/`, `feeds/` and the phone reader in `read/`. |
 
 ## License
 
