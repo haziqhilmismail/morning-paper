@@ -173,15 +173,9 @@ A banner asks you to install the reader as an app. On an iPhone, it tells you to
 
 The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xml`. The feed holds the 10 newest links. When you send link 11, the bot moves the oldest link to the archive. The bot fetches each article on the server and puts its text in the feed. Entry 7 of `feed_config.lua` reads it, and News Downloader saves each article in a `Shared` folder. The e-reader opens no other site. The links do not go into the paper.
 
-| Command | What it does |
-|---|---|
-| `/list` | Shows the links in the Shared feed, newest first, with numbers. |
-| `/archive 1 3` | Moves links 1 and 3 from the feed to the archive, `data/archive.tsv`. |
-| `/delete 2` | Removes link 2 from the feed. |
-| `/archived` | Shows the archive. |
-| `/now` | Starts a new build of the paper. |
+The bot shows a menu with 3 buttons: **📋 Feed**, **🗄 Archive** and **🗞 Rebuild paper**. The feed and the archive list each link with buttons: **Archive**, **Delete** and **🔗** (open the link) in the feed, and **Restore** in the archive. The commands `/list`, `/archived` and `/now` do the same as the menu.
 
-`/archive` and `/delete` change only the feed. KOReader keeps the articles that it already downloaded.
+**Archive** and **Delete** change only the feed. KOReader keeps the articles that it already downloaded.
 
 1. Make a bot with [@BotFather](https://t.me/BotFather), and put its token in `PAPER_BOT_TOKEN` in `.env`.
 2. Put your own chat id in `PAPER_BOT_CHAT_ID`. The bot ignores messages from other chats.
