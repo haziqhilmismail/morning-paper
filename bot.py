@@ -189,6 +189,14 @@ def handle(msg):
     if cmd in ("/now", "🗞"):
         subprocess.run(["systemctl", "--user", "start", "--no-block", "morning-paper.service"], check=True)
         return {"text": "Building the paper now. It is ready in about 10 minutes."}
+    if cmd == "/synckey":
+        key = os.environ.get("READER_SYNC_KEY", "")
+        if not key:
+            return {"text": "No sync key is set. Put READER_SYNC_KEY in .env on the server."}
+        return {"text": f"Sync key for the Morning Paper reader (keep it private):\n\n{key}\n\n"
+                        "In the reader, tap \"Turn on sync\" at the bottom of the editions list and paste it. "
+                        f"In a browser, you can also open this link once:\n{os.environ.get('PAPER_URL', '')}/read/#sync={key}",
+                "link_preview_options": {"is_disabled": True}}
     if cmd in ("/list", "📋"):
         return view()
     if cmd in ("/archived", "🗄"):
@@ -209,7 +217,8 @@ def main():
     time.tzset()
     chat_id = int(os.environ["PAPER_BOT_CHAT_ID"])
     write_feed()
-    commands = [("list", "Show the Shared feed"), ("archived", "Show the archive"), ("now", "Rebuild the paper")]
+    commands = [("list", "Show the Shared feed"), ("archived", "Show the archive"), ("now", "Rebuild the paper"),
+                ("synckey", "Get the reader sync key")]
     try:
         api("setMyCommands", commands=[{"command": c, "description": d} for c, d in commands])
     except OSError as e:
