@@ -1,0 +1,7 @@
+[Unit]
+Description=Morning paper for KOReader (OPDS)
+
+[Service]
+Type=oneshot
+TimeoutStartSec=45min
+ExecStart=%h/morning-paper/run.sh

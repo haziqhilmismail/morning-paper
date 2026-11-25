@@ -1,0 +1,4 @@
+# name url : line N goes to www/feeds/N.xml (6 slots) without paid-only previews.
+# KOReader News Downloader reads the slots, so you can change lines here without a new file on the reader.
+experimental-history https://www.experimental-history.com/feed
+selfhst https://selfh.st/rss/

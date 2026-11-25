@@ -1,0 +1,16 @@
+.env
+Caddyfile
+config.json
+feeds.txt
+my-prompt.txt
+koreader/feed_config.lua
+# .gitkeep: Docker makes a missing bind-mount folder (www, data/koreader) as root.
+upstream/
+upstream.tmp/
+data/*
+!data/koreader/
+data/koreader/*
+!data/koreader/.gitkeep
+www/*
+!www/.gitkeep
+__pycache__/

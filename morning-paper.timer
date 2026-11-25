@@ -1,0 +1,10 @@
+[Unit]
+Description=Build the morning paper every morning
+
+[Timer]
+# Server time. To pin a time zone, add it, for example: *-*-* 05:15:00 Asia/Kuala_Lumpur
+OnCalendar=*-*-* 05:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
