@@ -24,7 +24,7 @@ ARCHIVE = HERE / "data" / "archive.tsv"
 FEED = HERE / "www" / "feeds" / "shared.xml"
 URL = re.compile(r"https?://[^\s<>\"]+")
 ARTICLES = HERE / "data" / "shared"
-KEEP = 20
+KEEP = 10
 # Runs in the morning-paper image (run.sh builds it), which has trafilatura. Prints the title, then the HTML.
 EXTRACT = """
 import sys, requests, trafilatura
@@ -113,7 +113,7 @@ def remove(args, archive):
 
 
 def write_feed():
-    rows = read(SHARED)[-KEEP:]
+    rows = read(SHARED)
     for old in ARTICLES.glob("*.html") if ARTICLES.exists() else []:
         if old not in {page(r[1]) for r in rows}:
             old.unlink()
@@ -159,8 +159,16 @@ def handle(msg):
                 "remove link N from it. /archived shows the archive. /now rebuilds the paper.")
     with SHARED.open("a") as f:
         f.writelines(f"{date.today().isoformat()}\t{u}\t{fetch(u).replace(chr(9), ' ')}\n" for u in urls)
+    rows = read(SHARED)
+    old = rows[:-KEEP]
+    if old:
+        # Removed links go to the archive, so /archived still finds them.
+        save(SHARED, rows[-KEEP:])
+        with ARCHIVE.open("a") as f:
+            f.writelines("\t".join(r) + "\n" for r in old)
     write_feed()
-    return f"Added {len(urls)} link(s) to the Shared feed. Sync News Downloader to read them."
+    note = "".join(f"\nRemoved the oldest, now in /archived: {name(r)}" for r in old)
+    return f"Added {len(urls)} link(s) to the Shared feed. Sync News Downloader to read them.{note}"
 
 
 def main():
