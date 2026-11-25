@@ -1,5 +1,5 @@
 [Unit]
-Description=Telegram bot that queues links for the morning paper
+Description=Telegram bot for the Shared feed of the morning paper
 
 [Service]
 EnvironmentFile=%h/morning-paper/.env
