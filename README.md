@@ -158,16 +158,13 @@ The curation uses the posts and books that you read as 40% of the picks. Without
 
 ## Read the paper on your phone
 
-Open `https://paper.example.com/read/` in the phone browser. The reader has no password, because an iPhone home-screen app asks for it again on each start. Anyone with the address can read it, but search engines get a `noindex` header. The EPUB files, the feeds and WebDAV still need the password. To keep the reader private, remove the `@private` matcher from `basic_auth` in the `Caddyfile`. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
+The reader is for your own network only. `paper-web` returns 404 for `/read/` when a request comes through a Cloudflare tunnel (it has a `Cf-Connecting-IP` header). Serve it on a name that only your LAN or Tailscale reaches, for example a reverse proxy on the server for `read.example.com` to `127.0.0.1:8092`. The reader has no password, because an iPhone home-screen app asks for it again on each start. The EPUB files, the feeds and WebDAV still need the password.
+
+Open `https://read.example.com/read/` in the phone browser. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
 
 The reader shows a progress bar on each article and opens it again where you stopped. The editions list shows how many articles of each edition you read to the end. The browser keeps this data.
 
-To let the curation use this reading, turn on sync:
-
-1. Make a key and put it in `READER_SYNC_KEY` in `.env`. Put its hash in the `sync` line of the `Caddyfile`. The key can only write files to `/dav/web/`.
-2. In the reader, tap **Turn on sync** at the bottom of the editions list, and paste the sync code. To get a code for a new device, send `/synckey` to the Telegram bot. The bot first asks for a name for the device, then sends a sync code (`key:name`) and a link. Paste the code in the reader; it saves the name in the log. In a browser, you can also open `https://paper.example.com/read/#sync=<key>` once.
-
-Each device then saves its log to `data/koreader/web/<device>.json`. A device without the key keeps its progress bar, last position and read counts, but sends nothing, so the curation does not see its reading. `curate.sh` adds an article to MY READING when you read it for one minute or more and past 10% of its length.
+Each reading session also goes to the server: when you leave an article or the app, the reader sends one request to `/read/log`. `paper-web` writes only these requests to `data/logs/reading.log`, with the time, the device address and the browser. `curate.sh` adds an article to MY READING when your sessions on it add up to one minute or more and you read past 10% of it. Send `/devices` to the Telegram bot to see the devices that you read on and give each one a name.
 
 A banner asks you to install the reader as an app. On an iPhone, it tells you to tap **Share** and then **Add to Home Screen**, because Safari has no install prompt for websites. In Chrome and Edge, it shows an **Install** button. If you close the banner, it stays hidden for 7 days. Pages that you opened once also open without a connection.
 
