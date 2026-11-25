@@ -260,6 +260,15 @@ def handle(msg):
     return reply
 
 
+def answer(query_id, note=None):
+    """Stop the spinner on a tapped button. Telegram refuses this after about 15 s,
+    for example for a tap that arrived while the bot restarted; the action itself still runs."""
+    try:
+        api("answerCallbackQuery", callback_query_id=query_id, **({"text": note} if note else {}))
+    except OSError as e:
+        print(f"answerCallbackQuery: {e}", flush=True)
+
+
 def main():
     os.environ["TZ"] = os.environ.get("PAPER_TZ", "UTC")
     time.tzset()
@@ -287,12 +296,12 @@ def main():
                     if cq["from"]["id"] != chat_id or cq.get("message", {}).get("chat", {}).get("id") != chat_id:
                         continue
                     if cq.get("data", "").startswith("n:"):
-                        api("answerCallbackQuery", callback_query_id=cq["id"])
+                        answer(cq["id"])
                         api("sendMessage", chat_id=chat_id, text=ASK_NAME.format(cq["data"][2:]),
                             reply_markup={"force_reply": True, "input_field_placeholder": "Device name"})
                         continue
                     note, reply = press(cq.get("data", ""))
-                    api("answerCallbackQuery", callback_query_id=cq["id"], text=note)
+                    answer(cq["id"], note)
                     try:
                         api("editMessageText", chat_id=chat_id, message_id=cq["message"]["message_id"],
                             **{"reply_markup": {"inline_keyboard": []}, **reply})
