@@ -10,7 +10,37 @@ Based on [jstriblet/kobo-morning-paper](https://github.com/jstriblet/kobo-mornin
 
 ## How a daily run works
 
-`run.sh` runs once a day from a systemd timer. Each run does these steps:
+`run.sh` runs once a day at 05:15 server time from `morning-paper.timer`. The `/now` command of the Telegram bot also starts it.
+
+```mermaid
+flowchart TD
+	timer["morning-paper.timer<br/>05:15 server time"] --> run
+	bot["bot.py (Telegram)"] -- "/now" --> run
+	bot -- "links you send" --> shared["data/shared.tsv"]
+
+	subgraph run["run.sh"]
+		direction TB
+		feedspy["feeds.py<br/>feeds.txt to www/feeds/1.xml ... 6.xml"]
+		curate["curate.sh<br/>Claude CLI with web search"]
+		queue["data/queue.txt<br/>about 10 URLs + your links"]
+		build["Upstream build in Docker<br/>upstream/ mounted read-only"]
+		prune["prune_short.py<br/>drops articles under 400 words"]
+		publish["www/editions/*.epub, www/opds.xml<br/>reader.py: www/read/"]
+		feedspy -- "post titles: 30%" --> curate --> queue --> build --> prune --> publish
+	end
+
+	prompt["my-prompt.txt<br/>your topics: 60%"] --> curate
+	stats["data/koreader/statistics.sqlite3<br/>books you read: 10%"] --> curate
+	shared -- "links from the last 7 days" --> queue
+
+	publish --> web["paper-web (Caddy)<br/>password"]
+	web --> koreader["KOReader<br/>OPDS sync and News Downloader"]
+	web --> phone["Phone browser<br/>/read/"]
+	koreader -- "reading statistics over WebDAV, /dav" --> web
+	web --> dav["paper-dav (rclone WebDAV)"] --> stats
+```
+
+Each run does these steps:
 
 1. `feeds.py` downloads the feeds in `feeds.txt` to `www/feeds/1.xml` to `www/feeds/6.xml`. It removes Substack posts that are only previews for paid subscribers.
 2. `curate.sh` sends three inputs to the Claude CLI: your topics in `my-prompt.txt` (60%), the post titles of your feeds (30%), and the books you read in KOReader in the last 30 days (10%). Claude uses web search and returns about 10 article URLs from the last 7 days.
@@ -18,10 +48,26 @@ Based on [jstriblet/kobo-morning-paper](https://github.com/jstriblet/kobo-mornin
 4. The upstream build fetches each URL, extracts the text, and makes an EPUB with a front page. Articles that are older than 7 days are not included.
 5. `prune_short.py` removes articles with fewer than 400 words, because those are usually paywall previews. If it removes one, the build runs again.
 6. `run.sh` copies the EPUB to `www/editions/` and writes `www/opds.xml`. The catalog lists the 7 newest editions, newest first.
-
 7. `reader.py` turns each edition into web pages in `www/read/`, for a phone browser.
 
 The `paper-web` container serves `www/` behind a password. KOReader reads the OPDS catalog and downloads each new edition.
+
+### What is this project and what is upstream
+
+`run.sh` clones [jstriblet/kobo-morning-paper](https://github.com/jstriblet/kobo-morning-paper) into `upstream/` at a fixed commit. The upstream code does not change here. It runs in a Docker container that has `upstream/` as a read-only folder.
+
+```mermaid
+flowchart LR
+	subgraph here["This repository"]
+		scripts["run.sh, curate.sh, feeds.py<br/>prune_short.py, reader.py, bot.py"]
+		docker["Dockerfile: the Python image<br/>compose.yml: paper-web, paper-dav"]
+	end
+	subgraph up["upstream/ (MIT)"]
+		builder["scripts/kobo-digest-build.py<br/>fetch, extract, EPUB, cover"]
+	end
+	scripts -- "docker run, /app read-only" --> builder
+	builder -- "data/read-later.epub, data/cover.jpg" --> scripts
+```
 
 ## What you need
 
