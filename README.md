@@ -165,9 +165,9 @@ The reader shows a progress bar on each article and opens it again where you sto
 To let the curation use this reading, turn on sync:
 
 1. Make a key and put it in `READER_SYNC_KEY` in `.env`. Put its hash in the `sync` line of the `Caddyfile`. The key can only write files to `/dav/web/`.
-2. In the reader, tap **Turn on sync** at the bottom of the editions list, and paste the key. In a browser, you can also open `https://paper.example.com/read/#sync=<key>` once.
+2. In the reader, tap **Turn on sync** at the bottom of the editions list, and paste the key. To get the key on a new device, send `/synckey` to the Telegram bot. In a browser, you can also open `https://paper.example.com/read/#sync=<key>` once.
 
-Each device then saves its log to `data/koreader/web/<device>.json`. `curate.sh` adds an article to MY READING when you read it for one minute or more and past 10% of its length.
+Each device then saves its log to `data/koreader/web/<device>.json`. A device without the key keeps its progress bar, last position and read counts, but sends nothing, so the curation does not see its reading. `curate.sh` adds an article to MY READING when you read it for one minute or more and past 10% of its length.
 
 A banner asks you to install the reader as an app. On an iPhone, it tells you to tap **Share** and then **Add to Home Screen**, because Safari has no install prompt for websites. In Chrome and Edge, it shows an **Install** button. If you close the banner, it stays hidden for 7 days. Pages that you opened once also open without a connection.
 

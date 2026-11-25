@@ -85,7 +85,7 @@
 			link.textContent = data.key ? "Sync on" : "Turn on sync";
 			link.onclick = (e) => {
 				e.preventDefault();
-				const key = prompt("Paste the sync key from the Telegram bot. Leave it empty to turn sync off.", data.key || "");
+				const key = prompt("Paste the sync key. Send /synckey to the Telegram bot to get it. Without a key, your progress stays on this device only. Leave it empty to turn sync off.", data.key || "");
 				if (key === null) return;
 				data.key = key.trim() || undefined;
 				save();
