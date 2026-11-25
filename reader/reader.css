@@ -12,7 +12,7 @@
 	:root { --bg: #161513; --fg: #e8e4dc; --muted: #9a958c; --line: #2f2c27; --accent: #e8a33d; }
 }
 /* The front page is a printed page, so the whole page stays light in dark mode too. */
-:root:has(body.front) { color-scheme: light; --bg: #fbf8f2; --fg: #1f1f1f; --muted: #6b665e; --line: #e2dccf; --accent: #9a5b12; }
+:root:has(body.front) { color-scheme: light; --bg: #ffffff; --fg: #1f1f1f; --muted: #6b665e; --line: #e2dccf; --accent: #9a5b12; }
 
 html {
 	background: var(--bg);
@@ -72,9 +72,8 @@ nav {
 	display: flex;
 	gap: 4px;
 	padding-top: env(safe-area-inset-top);
-	background: color-mix(in srgb, var(--bg) 88%, transparent);
-	-webkit-backdrop-filter: blur(12px);
-	backdrop-filter: blur(12px);
+	/* Solid, not see-through: iOS 26 already blurs the top edge, and text under a second blur is hard to read. */
+	background: var(--bg);
 	border-bottom: 1px solid var(--line);
 	/* Full-width bar, links lined up with the text column. */
 	padding-left: max(8px, env(safe-area-inset-left), calc((100% - 40rem) / 2 - 12px));
@@ -102,7 +101,8 @@ footer {
 .colophon a { color: inherit; }
 
 /* The front page is a set of images made for an e-reader: keep them at paper width on a big screen. */
-.front main { max-width: 760px; padding: env(safe-area-inset-top) 0 0; }
+/* iOS 26 blurs a band just below the status bar, so the first line starts below that band. */
+.front main { max-width: 760px; padding: calc(env(safe-area-inset-top) + 16px) 0 0; }
 .front main img { width: 100%; display: block; }
 .front main a { display: block; }
 @media (min-width: 800px) {
@@ -111,7 +111,7 @@ footer {
 }
 
 /* Editions list */
-.home main { padding-top: env(safe-area-inset-top); }
+.home main { padding-top: calc(env(safe-area-inset-top) + 16px); }
 .home h1 { font-size: 2rem; margin-top: 1.2em; }
 .editions { list-style: none; padding: 0; margin: 0; font-family: var(--ui); }
 .editions li + li { border-top: 1px solid var(--line); }
