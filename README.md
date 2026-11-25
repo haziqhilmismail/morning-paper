@@ -171,7 +171,7 @@ A banner asks you to install the reader as an app. On an iPhone, it tells you to
 
 ## Use the Telegram bot
 
-The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xml`. The feed holds the 20 newest links. The bot fetches each article on the server and puts its text in the feed. Entry 7 of `feed_config.lua` reads it, and News Downloader saves each article in a `Shared` folder. The e-reader opens no other site. The links do not go into the paper.
+The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xml`. The feed holds the 10 newest links. When you send link 11, the bot moves the oldest link to the archive. The bot fetches each article on the server and puts its text in the feed. Entry 7 of `feed_config.lua` reads it, and News Downloader saves each article in a `Shared` folder. The e-reader opens no other site. The links do not go into the paper.
 
 | Command | What it does |
 |---|---|
