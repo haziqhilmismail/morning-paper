@@ -90,26 +90,55 @@ def name(row):
     return row[2] if len(row) > 2 else row[1]
 
 
-def numbered(path, empty):
-    """Newest first, so number 1 is the link that you sent last."""
-    rows = read(path)[::-1]
-    return "\n".join(f"{i}. {name(r)}" for i, r in enumerate(rows, 1)) or empty
+def lid(url):
+    return hashlib.sha1(url.encode()).hexdigest()[:12]
 
 
-def remove(args, archive):
-    rows = read(SHARED)[::-1]
-    picks = {int(a) for a in args if a.isdigit() and 1 <= int(a) <= len(rows)}
-    if not picks:
-        return "Send the command with numbers from /list, for example /delete 2 or /archive 1 3."
-    gone = [r for i, r in enumerate(rows, 1) if i in picks]
-    save(SHARED, [r for i, r in enumerate(rows, 1) if i not in picks][::-1])
-    if archive:
-        with ARCHIVE.open("a") as f:
-            f.writelines("\t".join(r) + "\n" for r in gone[::-1])
+def view(archived=False):
+    """The feed (or the archive), newest first, with a row of buttons for each link."""
+    # Telegram allows 100 buttons in one message, so the archive view shows the 20 newest.
+    rows = read(ARCHIVE if archived else SHARED)[::-1][:20]
+    if not rows:
+        return {"text": "The archive is empty." if archived else "The Shared feed is empty. Send me a link."}
+    head = "Archive" if archived else f"Shared feed ({len(rows)} of {KEEP})"
+    acts = [("♻️ Restore", "r")] if archived else [("🗄 Archive", "a"), ("🗑 Delete", "d")]
+    return {"text": head + "\n\n" + "\n".join(f"{i}. {name(r)}" for i, r in enumerate(rows, 1)),
+            "reply_markup": {"inline_keyboard": [
+                [{"text": f"{label} {i}", "callback_data": f"{c}:{lid(r[1])}"} for label, c in acts] + [{"text": "🔗", "url": r[1]}]
+                for i, r in enumerate(rows, 1)]}}
+
+
+def add(rows):
+    """Add rows to the feed. Above KEEP links, the oldest go to the archive. Returns the moved rows."""
+    rows = read(SHARED) + rows
+    old = rows[:-KEEP]
+    save(SHARED, rows[-KEEP:])
+    with ARCHIVE.open("a") as f:
+        f.writelines("\t".join(r) + "\n" for r in old)
     write_feed()
-    verb = "Archived" if archive else "Deleted"
-    return f"{verb} from the Shared feed:\n" + "\n".join(f"- {name(r)}" for r in gone) + \
-        "\nCopies already on the e-reader stay there."
+    return old
+
+
+def press(data):
+    """A button: a (archive), d (delete) or r (restore), then a link id. Returns a note and the view to show."""
+    act, _, key = data.partition(":")
+    if act not in ("a", "d", "r"):
+        return "Unknown button.", view()
+    src = ARCHIVE if act == "r" else SHARED
+    rows = read(src)
+    hit = [r for r in rows if lid(r[1]) == key]
+    if not hit:
+        return "That link is gone already.", view(act == "r")
+    save(src, [r for r in rows if lid(r[1]) != key])
+    if act == "a":
+        with ARCHIVE.open("a") as f:
+            f.write("\t".join(hit[0]) + "\n")
+    if act == "r":
+        fetch(hit[0][1])
+        add(hit)
+    else:
+        write_feed()
+    return {"a": "Archived", "d": "Deleted", "r": "Restored"}[act] + f": {name(hit[0])}", view(act == "r")
 
 
 def write_feed():
@@ -140,35 +169,31 @@ def write_feed():
     tmp.replace(FEED)
 
 
+KEYBOARD = {"keyboard": [[{"text": "📋 Feed"}, {"text": "🗄 Archive"}], [{"text": "🗞 Rebuild paper"}]],
+            "resize_keyboard": True, "is_persistent": True}
+HELP = ("Send me an article link. I add it to the Shared feed, and News Downloader gets it at the next sync.\n"
+        f"The feed keeps the {KEEP} newest links. Older links move to the archive. Links already on the e-reader stay there.")
+
+
 def handle(msg):
     text = (msg.get("text") or "").strip()
-    cmd, *args = text.split() or [""]
-    cmd = cmd.split("@")[0]
-    if cmd == "/now":
+    cmd = (text.split() or [""])[0].split("@")[0]
+    if cmd in ("/now", "🗞"):
         subprocess.run(["systemctl", "--user", "start", "--no-block", "morning-paper.service"], check=True)
-        return "Building the paper now. It is ready in about 10 minutes."
-    if cmd == "/list":
-        return numbered(SHARED, "The Shared feed is empty.")
-    if cmd == "/archived":
-        return numbered(ARCHIVE, "The archive is empty.")
-    if cmd in ("/archive", "/delete"):
-        return remove(args, archive=cmd == "/archive")
+        return {"text": "Building the paper now. It is ready in about 10 minutes."}
+    if cmd in ("/list", "📋"):
+        return view()
+    if cmd in ("/archived", "🗄"):
+        return view(archived=True)
     urls = links(msg)
     if not urls:
-        return ("Send me an article link to add it to the Shared feed.\n/list shows the feed. /archive N and /delete N "
-                "remove link N from it. /archived shows the archive. /now rebuilds the paper.")
-    with SHARED.open("a") as f:
-        f.writelines(f"{date.today().isoformat()}\t{u}\t{fetch(u).replace(chr(9), ' ')}\n" for u in urls)
-    rows = read(SHARED)
-    old = rows[:-KEEP]
-    if old:
-        # Removed links go to the archive, so /archived still finds them.
-        save(SHARED, rows[-KEEP:])
-        with ARCHIVE.open("a") as f:
-            f.writelines("\t".join(r) + "\n" for r in old)
-    write_feed()
-    note = "".join(f"\nRemoved the oldest, now in /archived: {name(r)}" for r in old)
-    return f"Added {len(urls)} link(s) to the Shared feed. Sync News Downloader to read them.{note}"
+        return {"text": HELP, "reply_markup": KEYBOARD}
+    new = [[date.today().isoformat(), u, fetch(u).replace("\t", " ")] for u in urls]
+    old = add(new)
+    note = "".join(f"\nMoved the oldest link to the archive: {name(r)}" for r in old)
+    reply = view()
+    reply["text"] = "Added: " + ", ".join(name(r) for r in new) + note + "\n\n" + reply["text"]
+    return reply
 
 
 def main():
@@ -176,8 +201,7 @@ def main():
     time.tzset()
     chat_id = int(os.environ["PAPER_BOT_CHAT_ID"])
     write_feed()
-    commands = [("list", "Show the Shared feed"), ("archive", "Archive links by number"), ("delete", "Delete links by number"),
-                ("archived", "Show the archive"), ("now", "Rebuild the paper")]
+    commands = [("list", "Show the Shared feed"), ("archived", "Show the archive"), ("now", "Rebuild the paper")]
     try:
         api("setMyCommands", commands=[{"command": c, "description": d} for c, d in commands])
     except OSError as e:
@@ -185,26 +209,34 @@ def main():
     offset = 0
     while True:
         try:
-            updates = api("getUpdates", wait=60, offset=offset, timeout=50, allowed_updates=["message"])
+            updates = api("getUpdates", wait=60, offset=offset, timeout=50, allowed_updates=["message", "callback_query"])
         except (OSError, ValueError) as e:
             print(f"getUpdates failed: {e}", flush=True)
             time.sleep(15)
             continue
         for upd in updates:
             offset = upd["update_id"] + 1
-            msg = upd.get("message")
-            if not msg or msg["chat"]["id"] != chat_id:
-                continue
             try:
+                if "callback_query" in upd:
+                    cq = upd["callback_query"]
+                    if cq["from"]["id"] != chat_id or cq.get("message", {}).get("chat", {}).get("id") != chat_id:
+                        continue
+                    note, reply = press(cq.get("data", ""))
+                    api("answerCallbackQuery", callback_query_id=cq["id"], text=note)
+                    api("editMessageText", chat_id=chat_id, message_id=cq["message"]["message_id"],
+                        **{"reply_markup": {"inline_keyboard": []}, **reply})
+                    continue
+                msg = upd.get("message")
+                if not msg or msg["chat"]["id"] != chat_id:
+                    continue
                 reply = handle(msg)
             except Exception as e:
-                reply = f"Error: {e}"
-            print(reply, flush=True)
+                reply = {"text": f"Error: {e}"}
+            print(reply["text"].splitlines()[0], flush=True)
             try:
-                api("sendMessage", chat_id=chat_id, text=reply)
+                api("sendMessage", chat_id=chat_id, **reply)
             except OSError as e:
                 print(f"sendMessage failed: {e}", flush=True)
-
 
 if __name__ == "__main__":
     main()
