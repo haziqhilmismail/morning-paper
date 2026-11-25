@@ -191,10 +191,12 @@ def sync_key(name):
     key = os.environ.get("READER_SYNC_KEY", "")
     if not key:
         return {"text": "No sync key is set. Put READER_SYNC_KEY in .env on the server."}
-    link = f"{os.environ.get('PAPER_URL', '')}/read/#sync={key}&name={urllib.parse.quote(name)}"
-    return {"text": f"Sync key for {name} (keep it private):\n\n{key}\n\n"
-                    f"In the reader on {name}, tap \"Turn on sync\" at the bottom of the editions list, paste the key, "
-                    f"and type {name} as the device name. In a browser, you can open this link once instead:\n{link}",
+    # One code holds the key and the name, so the reader asks one question only. The key has no ":".
+    code = f"{key}:{name}"
+    link = f"{os.environ.get('PAPER_URL', '')}/read/#sync={urllib.parse.quote(code)}"
+    return {"text": f"Sync code for {name} (keep it private):\n\n{code}\n\n"
+                    f"In the reader on {name}, tap \"Turn on sync\" at the bottom of the editions list and paste the code. "
+                    f"In a browser, you can open this link once instead:\n{link}",
             "link_preview_options": {"is_disabled": True}}
 
 

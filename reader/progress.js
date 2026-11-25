@@ -11,10 +11,15 @@
 	const save = () => { try { localStorage.setItem(STORE, JSON.stringify(data)); } catch {} };
 
 	// The sync key comes once in the link (#sync=...) and stays on this device only.
-	const fromLink = new URLSearchParams(location.hash.slice(1));
-	if (fromLink.get("sync")) {
-		data.key = fromLink.get("sync");
-		data.name = fromLink.get("name") || data.name;
+	// A sync code from the bot is "key:device name". A bare key keeps the name that the device had.
+	function useCode(code) {
+		const [key, ...name] = code.trim().split(":");
+		data.key = key || undefined;
+		if (name.length) data.name = name.join(":").trim() || data.name;
+	}
+	const fromLink = new URLSearchParams(location.hash.slice(1)).get("sync");
+	if (fromLink) {
+		useCode(fromLink);
 		history.replaceState(null, "", location.pathname);
 	}
 	save();
@@ -86,10 +91,9 @@
 			link.textContent = data.key ? "Sync on" : "Turn on sync";
 			link.onclick = (e) => {
 				e.preventDefault();
-				const key = prompt("Paste the sync key. Send /synckey to the Telegram bot to get it. Without a key, your progress stays on this device only. Leave it empty to turn sync off.", data.key || "");
+				const key = prompt("Paste the sync code. Send /synckey to the Telegram bot to get it. Without a code, your progress stays on this device only. Leave it empty to turn sync off.", data.key ? `${data.key}:${data.name || ""}` : "");
 				if (key === null) return;
-				data.key = key.trim() || undefined;
-				if (data.key) data.name = prompt("Name this device, as you told the bot:", data.name || "")?.trim() || data.name;
+				useCode(key);
 				save();
 				push();
 				link.textContent = data.key ? "Sync on" : "Turn on sync";
