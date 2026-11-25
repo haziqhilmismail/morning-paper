@@ -26,7 +26,7 @@ HEAD = ('<head><meta name="viewport" content="width=device-width, initial-scale=
         '<meta name="apple-mobile-web-app-title" content="Paper"/>'
         '<link rel="stylesheet" href="{up}reader.css?v={v}"/>'
         '<link rel="manifest" href="{up}manifest.json" crossorigin="use-credentials"/>'
-        '<link rel="apple-touch-icon" href="{up}icon-192.png"/>'
+        '<link rel="apple-touch-icon" href="{up}apple-touch-icon.png?v={v}"/>'
         '<script src="{up}install.js?v={v}" defer="defer"></script>'
         '<script src="{up}progress.js?v={v}" defer="defer"></script>')
 
