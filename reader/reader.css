@@ -1,16 +1,128 @@
-:root { color-scheme: light dark; --bg: #fbf8f2; --fg: #1f1f1f; --muted: #666; }
-@media (prefers-color-scheme: dark) { :root { --bg: #161513; --fg: #e8e4dc; --muted: #9a958c; } }
-body { margin: 0 auto; max-width: 42rem; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
-	font: 19px/1.6 Georgia, "PT Serif", serif; overflow-wrap: break-word; }
-img, video, iframe { max-width: 100%; height: auto; }
-a { color: inherit; }
-h1 { font-size: 1.6rem; line-height: 1.25; }
+:root {
+	color-scheme: light dark;
+	--bg: #fbf8f2;
+	--fg: #1f1f1f;
+	--muted: #6b665e;
+	--line: #e2dccf;
+	--accent: #9a5b12;
+	--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+	--ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+	:root { --bg: #161513; --fg: #e8e4dc; --muted: #9a958c; --line: #2f2c27; --accent: #e8a33d; }
+}
+
+html {
+	background: var(--bg);
+	-webkit-tap-highlight-color: transparent;
+	-webkit-text-size-adjust: 100%;
+}
+body {
+	margin: 0;
+	color: var(--fg);
+	font: 19px/1.65 "Iowan Old Style", Georgia, "PT Serif", serif;
+	overflow-wrap: break-word;
+}
+main, footer {
+	box-sizing: border-box;
+	max-width: calc(40rem + 40px);
+	margin: 0 auto;
+	padding-left: max(20px, env(safe-area-inset-left));
+	padding-right: max(20px, env(safe-area-inset-right));
+}
+@media (min-width: 1024px) { body { font-size: 20px; } }
+
+/* Article content comes from many sites, so keep every element inside the column. */
+img, video, iframe, svg { max-width: 100%; height: auto; }
+figure { margin: 1.5em 0; }
+figcaption { color: var(--muted); font: 14px/1.4 var(--ui); margin-top: 6px; }
+table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.85em; }
+td, th { padding: 4px 8px; border-bottom: 1px solid var(--line); }
+pre { overflow-x: auto; font-size: 0.8em; }
 pre, code { white-space: pre-wrap; }
-nav { position: sticky; top: 0; padding: 10px 0; background: var(--bg); border-bottom: 1px solid var(--muted);
-	font: 15px system-ui, sans-serif; }
-nav a { margin-right: 16px; text-decoration: none; }
-.front { max-width: none; padding: 0; }
-.front img { width: 100%; display: block; }
-.editions { list-style: none; padding: 0; font-family: system-ui, sans-serif; }
-.editions a { display: flex; gap: 14px; align-items: center; padding: 10px 0; text-decoration: none; }
-.editions img { width: 72px; border: 1px solid var(--muted); }
+blockquote { margin: 1.2em 0; padding-left: 1em; border-left: 3px solid var(--line); color: var(--muted); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 1.5em 0; }
+h1 { font-size: 1.75rem; line-height: 1.2; letter-spacing: -0.01em; margin: 0.8em 0 0.4em; text-wrap: balance; }
+h2, h3 { line-height: 1.3; text-wrap: balance; }
+a { color: inherit; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+
+/* Controls: nav bar and footer links. Press feedback on :active works for touch and mouse. */
+nav, footer { font: 15px/1.4 var(--ui); }
+nav a, .pager a, .editions a {
+	text-decoration: none;
+	touch-action: manipulation;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+	transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
+}
+nav a:active, .pager a:active { opacity: 0.55; }
+.editions a:active { transform: scale(0.98); }
+@media (hover: hover) and (pointer: fine) {
+	nav a:hover, .pager a:hover { color: var(--accent); }
+	.editions a:hover span { color: var(--accent); }
+}
+
+nav {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	gap: 4px;
+	padding-top: env(safe-area-inset-top);
+	background: color-mix(in srgb, var(--bg) 88%, transparent);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	border-bottom: 1px solid var(--line);
+	/* Full-width bar, links lined up with the text column. */
+	padding-left: max(8px, env(safe-area-inset-left), calc((100% - 40rem) / 2 - 12px));
+	padding-right: max(8px, env(safe-area-inset-right));
+}
+nav a { padding: 12px; min-height: 20px; }
+
+footer {
+	margin-top: 3rem;
+	padding-top: 1.25rem;
+	padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+	border-top: 1px solid var(--line);
+	color: var(--muted);
+}
+.pager { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 1rem; }
+.pager a {
+	flex: 1;
+	padding: 12px 10px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	text-align: center;
+	color: var(--fg);
+}
+.colophon { margin: 0; font-size: 13px; text-align: center; }
+.colophon a { color: inherit; }
+
+/* The front page is a set of images made for an e-reader: keep them at paper width on a big screen. */
+.front main { max-width: 760px; padding: env(safe-area-inset-top) 0 0; }
+.front main img { width: 100%; display: block; }
+.front main a { display: block; }
+@media (min-width: 800px) {
+	.front main { margin-top: 24px; }
+	.front main { box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.06); }
+}
+
+/* Editions list */
+.home main { padding-top: env(safe-area-inset-top); }
+.home h1 { font-size: 2rem; margin-top: 1.2em; }
+.editions { list-style: none; padding: 0; margin: 0; font-family: var(--ui); }
+.editions li + li { border-top: 1px solid var(--line); }
+.editions a { display: flex; gap: 16px; align-items: center; padding: 14px 0; }
+.editions img { width: 84px; height: auto; border-radius: 4px; border: 1px solid var(--line); background: #fff; }
+.editions span { display: flex; flex-direction: column; font-size: 17px; }
+.editions small { color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+
+@media (prefers-reduced-motion: reduce) {
+	nav a, .pager a, .editions a { transition: opacity 120ms; }
+	.editions a:active { transform: none; }
+}
+
+/* The build writes the source line with an inline color:#666, which is too dark on the dark background. */
+.article main > p[style] { color: var(--muted) !important; font: 15px/1.5 var(--ui); }
+.colophon a { white-space: nowrap; }
