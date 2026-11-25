@@ -13,6 +13,7 @@ import os
 import re
 import subprocess
 import time
+import urllib.error
 import urllib.request
 from datetime import date, datetime, timezone
 from email.utils import format_datetime
@@ -45,8 +46,11 @@ def api(method, wait=10, **params):
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{os.environ['PAPER_BOT_TOKEN']}/{method}",
         data=json.dumps(params).encode(), headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=wait) as resp:
-        return json.load(resp)["result"]
+    try:
+        with urllib.request.urlopen(req, timeout=wait) as resp:
+            return json.load(resp)["result"]
+    except urllib.error.HTTPError as e:
+        raise OSError(f"{method}: {json.load(e).get('description', e)}") from e
 
 
 def links(msg):
@@ -227,8 +231,13 @@ def main():
                         continue
                     note, reply = press(cq.get("data", ""))
                     api("answerCallbackQuery", callback_query_id=cq["id"], text=note)
-                    api("editMessageText", chat_id=chat_id, message_id=cq["message"]["message_id"],
-                        **{"reply_markup": {"inline_keyboard": []}, **reply})
+                    try:
+                        api("editMessageText", chat_id=chat_id, message_id=cq["message"]["message_id"],
+                            **{"reply_markup": {"inline_keyboard": []}, **reply})
+                    except OSError as e:
+                        # A second tap on a link that is gone leaves the list as it is.
+                        if "message is not modified" not in str(e):
+                            raise
                     continue
                 msg = upd.get("message")
                 if not msg or msg["chat"]["id"] != chat_id:
