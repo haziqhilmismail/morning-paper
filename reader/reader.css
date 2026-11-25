@@ -126,3 +126,38 @@ footer {
 /* The build writes the source line with an inline color:#666, which is too dark on the dark background. */
 .article main > p[style] { color: var(--muted) !important; font: 15px/1.5 var(--ui); }
 .colophon a { white-space: nowrap; }
+
+/* Install banner (install.js) */
+.install {
+	position: fixed;
+	left: max(12px, env(safe-area-inset-left));
+	right: max(12px, env(safe-area-inset-right));
+	bottom: calc(12px + env(safe-area-inset-bottom));
+	z-index: 2;
+	max-width: 28rem;
+	margin: 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 12px 12px 14px;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	box-shadow: 0 8px 30px rgb(0 0 0 / 0.18);
+	font: 15px/1.35 var(--ui);
+	transition: opacity 250ms var(--ease-out), transform 250ms var(--ease-out);
+	@starting-style { opacity: 0; transform: translateY(12px); }
+}
+.install img { width: 40px; height: 40px; border-radius: 9px; flex: none; }
+.install p { margin: 0; flex: 1; }
+.install button {
+	font: inherit;
+	border: 0;
+	cursor: pointer;
+	touch-action: manipulation;
+	transition: transform 120ms var(--ease-out);
+}
+.install button:active { transform: scale(0.96); }
+.install-go { padding: 8px 14px; border-radius: 9px; background: var(--fg); color: var(--bg); font-weight: 600; }
+.install-close { width: 36px; height: 36px; border-radius: 50%; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; }
+@media (prefers-reduced-motion: reduce) { .install { transition: opacity 250ms; } }

@@ -165,7 +165,7 @@ The curation uses the books you read as 10% of the picks.
 
 Open `https://paper.example.com/read/` in the phone browser and log in. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
 
-To install the reader as an app, open the browser menu and tap **Add to Home Screen** (Safari) or **Install app** (Chrome). The reader needs a connection to the server. It does not keep editions for offline use.
+A banner asks you to install the reader as an app. On an iPhone, it tells you to tap **Share** and then **Add to Home Screen**, because Safari has no install prompt for websites. In Chrome and Edge, it shows an **Install** button. If you close the banner, it stays hidden for 7 days. Pages that you opened once also open without a connection.
 
 ## Check that it works
 
