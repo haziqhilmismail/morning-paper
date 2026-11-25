@@ -16,22 +16,22 @@ Based on [jstriblet/kobo-morning-paper](https://github.com/jstriblet/kobo-mornin
 flowchart TD
 	timer["morning-paper.timer<br/>05:15 server time"] --> run
 	bot["bot.py (Telegram)"] -- "/now" --> run
-	bot -- "links you send" --> shared["data/shared.tsv"]
+	bot -- "links you send" --> shared["www/feeds/shared.xml<br/>the Shared feed"]
 
 	subgraph run["run.sh"]
 		direction TB
 		feedspy["feeds.py<br/>feeds.txt to www/feeds/1.xml ... 6.xml"]
 		curate["curate.sh<br/>Claude CLI with web search"]
-		queue["data/queue.txt<br/>about 10 URLs + your links"]
+		queue["data/queue.txt<br/>about 10 URLs"]
 		build["Upstream build in Docker<br/>upstream/ mounted read-only"]
 		prune["prune_short.py<br/>drops articles under 400 words"]
 		publish["www/editions/*.epub, www/opds.xml<br/>reader.py: www/read/"]
-		feedspy -- "post titles: 30%" --> curate --> queue --> build --> prune --> publish
+		feedspy --> curate --> queue --> build --> prune --> publish
 	end
 
 	prompt["my-prompt.txt<br/>your topics: 60%"] --> curate
-	stats["data/koreader/statistics.sqlite3<br/>books you read: 10%"] --> curate
-	shared -- "links from the last 7 days" --> queue
+	stats["data/koreader/statistics.sqlite3<br/>posts and books you read: 40%"] --> curate
+	shared --> web
 
 	publish --> web["paper-web (Caddy)<br/>password"]
 	web --> koreader["KOReader<br/>OPDS sync and News Downloader"]
@@ -43,8 +43,8 @@ flowchart TD
 Each run does these steps:
 
 1. `feeds.py` downloads the feeds in `feeds.txt` to `www/feeds/1.xml` to `www/feeds/6.xml`. It removes Substack posts that are only previews for paid subscribers.
-2. `curate.sh` sends three inputs to the Claude CLI: your topics in `my-prompt.txt` (60%), the post titles of your feeds (30%), and the books you read in KOReader in the last 30 days (10%). Claude uses web search and returns about 10 article URLs from the last 7 days.
-3. `run.sh` adds the links that you sent to the Telegram bot in the last 7 days.
+2. `curate.sh` sends two inputs to the Claude CLI: your topics in `my-prompt.txt` (60%), and the posts and books that you read in KOReader in the last 30 days (40%). Feed posts that you do not read have no effect. Claude uses web search and returns about 10 article URLs from the last 7 days.
+3. Claude returns the URLs to `data/queue.txt`.
 4. The upstream build fetches each URL, extracts the text, and makes an EPUB with a front page. Articles that are older than 7 days are not included.
 5. `prune_short.py` removes articles with fewer than 400 words, because those are usually paywall previews. If it removes one, the build runs again.
 6. `run.sh` copies the EPUB to `www/editions/` and writes `www/opds.xml`. The catalog lists the 7 newest editions, newest first.
@@ -73,9 +73,9 @@ flowchart LR
 
 - A Linux server with Docker, Docker Compose, `git`, `python3` and `flock`. `sqlite3` is optional. It reads your KOReader reading statistics.
 - An e-reader with [KOReader](https://koreader.rocks): a Kindle, a Kobo or another reader that KOReader supports.
-- The [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) and a Claude subscription, for the curation. Without it, the paper has only the links from the Telegram bot.
+- The [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) and a Claude subscription, for the curation. Without it, the paper is empty.
 - A way for the reader to reach the server, for example a reverse proxy with HTTPS or a Tailscale network. `paper-web` listens only on `127.0.0.1:8092`.
-- Optional: a Telegram bot, to add links to the next paper from your phone.
+- Optional: a Telegram bot, to send article links from your phone to the e-reader.
 
 ## Set up the server
 
@@ -148,14 +148,14 @@ Do these steps on the e-reader. Use the user name and the password from your `Ca
 ### Optional: read your feeds with News Downloader
 
 1. Copy `koreader/feed_config.lua.example` to `koreader/feed_config.lua`. Replace the address, the user name and the password.
-2. Put the file on the reader at `koreader/news/feed_config.lua`. You can use a USB cable. You can also put the file in `data/koreader/` on the server and download it with KOReader **Cloud storage** (step 1 of the next section).
+2. Put the file in the News Downloader download folder on the reader. The default folder is `koreader/news/`. You can use a USB cable, or KOReader **Cloud storage** (step 1 of the next section). KOReader shows only book files, so give the file a `.txt` name on the server, download it, and rename it to `feed_config.lua`. To see the renamed file, turn on **Show unsupported files** in the file browser settings.
 3. Open ☰, then **News downloader**, then **Sync news feeds**.
 
-The file lists 6 fixed slot URLs, so you do not copy it again when you change `feeds.txt`. Each feed gets a folder with the feed's own title.
+The file lists 6 fixed slot URLs and the Shared feed, so you do not copy it again when you change `feeds.txt`. Each feed gets a folder with the feed's own title.
 
 ### Optional: send your reading statistics
 
-The curation uses the books you read as 10% of the picks.
+The curation uses the posts and books that you read as 40% of the picks. Without these statistics, it uses only `my-prompt.txt`.
 
 1. Open ☰, then **Cloud storage**, then **Add new cloud storage**, then **WebDAV**. Enter `https://paper.example.com/dav` with your user name and password.
 2. Open **Tools**, then **Reading statistics**, then **Settings**, then **Cloud sync**. Select the WebDAV storage and its top folder.
@@ -176,7 +176,7 @@ A banner asks you to install the reader as an app. On an iPhone, it tells you to
 
 ## Use the Telegram bot
 
-The bot adds the links that you send it to the next paper. The links skip the 7-day age filter for 7 days after you send them. The command `/now` starts a new build.
+The bot adds the links that you send it to the Shared feed, `www/feeds/shared.xml`. The feed holds the 20 newest links. Entry 7 of `feed_config.lua` reads it, and News Downloader saves each full article in a `Shared` folder. The links do not go into the paper. The command `/now` starts a new build of the paper.
 
 1. Make a bot with [@BotFather](https://t.me/BotFather), and put its token in `PAPER_BOT_TOKEN` in `.env`.
 2. Put your own chat id in `PAPER_BOT_CHAT_ID`. The bot ignores messages from other chats.

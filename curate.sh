@@ -10,7 +10,7 @@ export PATH="$HOME/.local/bin:$PATH"
 claude=(timeout 20m claude)
 if [ -n "${CLAUDE_CONTAINER:-}" ]; then claude=(docker exec -i -e CLAUDE_CODE_OAUTH_TOKEN "$CLAUDE_CONTAINER" timeout 20m claude); fi
 
-instructions='You pick articles for my morning e-reader paper. Stdin has three parts: MY PROMPT (my own words, top priority), MY FEEDS (post titles from feeds I follow, which show my taste: find similar articles from other sources, never posts from these feeds), and MY E-READER BOOKS (books I read in the last 30 days, with minutes read: find articles on their subjects and authors). Split the articles by input: 60% MY PROMPT, 30% MY FEEDS, 10% MY E-READER BOOKS. If an input is empty, share its percentage among the others in proportion. Use web search to find about 10 articles from the last 7 days that match. Prefer long-form readable articles. No paywalls (also skip Substack posts for paid subscribers only), videos, PDFs or social media posts. Output only the article URLs, one per line, with no other text.'
+instructions='You pick articles for my morning e-reader paper. Stdin has two parts: MY PROMPT (my own words, top priority) and MY READING (posts and books I read on my e-reader in the last 30 days, with minutes read, which show my taste: find similar articles from other sources on the same subjects, never the same posts). Split the articles by input: 60% MY PROMPT, 40% MY READING. If MY READING is empty, use MY PROMPT for all articles. Use web search to find about 10 articles from the last 7 days that match. Prefer long-form readable articles. No paywalls (also skip Substack posts for paid subscribers only), videos, PDFs or social media posts. Output only the article URLs, one per line, with no other text.'
 # Same cutoff as the build's 7-day filter (max_age_days in the upstream config); older articles are built but then dropped.
 cutoff=$(date -d "7 days ago" +%F)
 instructions+=" Hard rule: open each article and check its publish date. Give it only if it was published on or after $cutoff. If you cannot find the date, skip the article. Give fewer articles rather than older ones."
@@ -19,9 +19,7 @@ instructions+=" Hard rule: open each article and check its publish date. Give it
 # because web pages can inject text into the answer.
 {
   echo "MY PROMPT:"; grep -v '^#' my-prompt.txt || true
-  echo; echo "MY FEEDS (feed names and recent post titles):"
-  grep -oh '<title><!\[CDATA\[[^]]*' www/feeds/*.xml 2>/dev/null | sed 's/.*CDATA\[//' || true
-  echo; echo "MY E-READER BOOKS (title | authors | minutes read, last 30 days):"
+  echo; echo "MY READING (title | authors | minutes read, last 30 days):"
   # KOReader statistics plugin syncs this file over WebDAV (paper-dav). The paper itself is left out, so it does not pick articles like its own.
   since=${READING_SINCE:-1970-01-01}
   [[ $since =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || since=1970-01-01

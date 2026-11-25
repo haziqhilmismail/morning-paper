@@ -8,4 +8,6 @@ return {
     { "https://paper.example.com/feeds/4.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
     { "https://paper.example.com/feeds/5.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
     { "https://paper.example.com/feeds/6.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
+    -- Links sent to the Telegram bot (bot.py). Each one is a web page, so News Downloader fetches the full article.
+    { "https://paper.example.com/feeds/shared.xml", limit = 20, download_full_article = true, include_images = true, http_auth = { username = "reader", password = "your-password" } },
 }
