@@ -45,7 +45,7 @@ for path in sys.argv[2:]:
             old = seen.get(title, (0, 0))
             seen[title] = (old[0] + int(it.get("seconds", 0)), max(old[1], int(it.get("progress", 0))))
 for title, (sec, prog) in sorted(seen.items(), key=lambda x: -x[1][0])[:15]:
-    if sec >= 60:
+    if sec >= 60 and prog > 10:  # a minute of reading and past the first screens
         print(f"{title} | Morning Paper web reader, {prog}% read | {sec // 60}")
 PY
 } | "${claude[@]}" -p "$instructions" --model opus --tools "WebSearch,WebFetch" --allowedTools "WebSearch,WebFetch" \
