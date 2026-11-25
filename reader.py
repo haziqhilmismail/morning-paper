@@ -5,6 +5,7 @@ The EPUB pages are XHTML, so the head, the navigation and the footer are inserte
 the files stay well-formed. Each run rebuilds www/read/ from www/editions, so a template change
 reaches every edition and a removed edition loses its pages.
 """
+import hashlib
 import html
 import re
 import shutil
@@ -14,6 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 EDITIONS, READ = ROOT / "www" / "editions", ROOT / "www" / "read"
+# Cloudflare caches .js and .css for hours, so each change to reader/ gets a new ?v= in the page links.
+VERSION = hashlib.sha1(b"".join(f.read_bytes() for f in sorted((ROOT / "reader").iterdir()))).hexdigest()[:8]
 REPO = "https://github.com/haziqhilmismail/morning-paper"
 HEAD = ('<head><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>'
         '<meta name="color-scheme" content="light dark"/>'
@@ -21,10 +24,11 @@ HEAD = ('<head><meta name="viewport" content="width=device-width, initial-scale=
         '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#161513"/>'
         '<meta name="apple-mobile-web-app-capable" content="yes"/>'
         '<meta name="apple-mobile-web-app-title" content="Paper"/>'
-        '<link rel="stylesheet" href="{up}reader.css"/>'
+        '<link rel="stylesheet" href="{up}reader.css?v={v}"/>'
         '<link rel="manifest" href="{up}manifest.json" crossorigin="use-credentials"/>'
         '<link rel="apple-touch-icon" href="{up}icon-192.png"/>'
-        '<script src="{up}install.js" defer="defer"></script>')
+        '<script src="{up}install.js?v={v}" defer="defer"></script>'
+        '<script src="{up}progress.js?v={v}" defer="defer"></script>')
 
 
 def label(name: str) -> str:
@@ -63,7 +67,7 @@ def unpack(epub: Path, out: Path) -> None:
                 top = "" if name == "frontpage.xhtml" else (
                     '<nav><a href="frontpage.xhtml">← Front page</a><a href="../">All editions</a></nav>')
                 body = '<body class="front">' if name == "frontpage.xhtml" else '<body class="article">'
-                head = HEAD.format(up="../")
+                head = HEAD.format(up="../", v=VERSION)
                 if name == "frontpage.xhtml":
                     head = head.replace('content="#161513"', 'content="#fbf8f2"')
                 text = data.decode().replace("<head>", head, 1)
@@ -74,13 +78,13 @@ def unpack(epub: Path, out: Path) -> None:
             (out / name).write_bytes(data)
 
 
-def index(names: list[str]) -> str:
+def index(names: list[str], totals: dict[str, int]) -> str:
     items = "".join(
-        f'<li><a href="{n}/frontpage.xhtml"><img src="../editions/{n}.jpg" alt="" width="84" height="112"/>'
+        f'<li data-edition="{n}" data-total="{totals[n]}"><a href="{n}/frontpage.xhtml"><img src="../editions/{n}.jpg" alt="" width="84" height="112"/>'
         f'<span>{"<small>Latest</small>" if i == 0 else ""}{html.escape(label(n))}</span></a></li>'
         for i, n in enumerate(names))
     empty = "" if names else "<p>No editions yet. The next run of run.sh makes one.</p>"
-    return ('<!doctype html><html lang="en">' + HEAD.format(up="") + '<meta charset="utf-8"/>'
+    return ('<!doctype html><html lang="en">' + HEAD.format(up="", v=VERSION) + '<meta charset="utf-8"/>'
             '<title>Morning Paper</title></head><body class="home"><main><h1>Morning Paper</h1>'
             f'<ul class="editions">{items}</ul>{empty}</main>'
             f'<footer><p class="colophon">Morning Paper · the 7 newest editions · <a href="{REPO}">source code</a>'
@@ -94,7 +98,8 @@ def main() -> None:
     shutil.copytree(ROOT / "reader", tmp)
     for n in names:
         unpack(EDITIONS / f"{n}.epub", tmp / n)
-    (tmp / "index.html").write_text(index(names), encoding="utf-8")
+    totals = {n: len(list((tmp / n).glob("art_*.xhtml"))) for n in names}
+    (tmp / "index.html").write_text(index(names, totals), encoding="utf-8")
     shutil.rmtree(READ, ignore_errors=True)
     tmp.rename(READ)
 

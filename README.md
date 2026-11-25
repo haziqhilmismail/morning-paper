@@ -162,6 +162,15 @@ The curation uses the posts and books that you read as 40% of the picks. Without
 
 Open `https://paper.example.com/read/` in the phone browser. The reader has no password, because an iPhone home-screen app asks for it again on each start. Anyone with the address can read it, but search engines get a `noindex` header. The EPUB files, the feeds and WebDAV still need the password. To keep the reader private, remove the `@private` matcher from `basic_auth` in the `Caddyfile`. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
 
+The reader shows a progress bar on each article and opens it again where you stopped. The editions list shows how many articles of each edition you read to the end. The browser keeps this data.
+
+To let the curation use this reading, turn on sync:
+
+1. Make a key and put it in `READER_SYNC_KEY` in `.env`. Put its hash in the `sync` line of the `Caddyfile`. The key can only write files to `/dav/web/`.
+2. In the reader, tap **Turn on sync** at the bottom of the editions list, and paste the key. In a browser, you can also open `https://paper.example.com/read/#sync=<key>` once.
+
+Each device then saves its log to `data/koreader/web/<device>.json`. `curate.sh` adds the articles that you read for one minute or more to MY READING.
+
 A banner asks you to install the reader as an app. On an iPhone, it tells you to tap **Share** and then **Add to Home Screen**, because Safari has no install prompt for websites. In Chrome and Edge, it shows an **Install** button. If you close the banner, it stays hidden for 7 days. Pages that you opened once also open without a connection.
 
 ## Check that it works

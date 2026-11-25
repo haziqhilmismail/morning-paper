@@ -3,8 +3,26 @@
 :8092 {
 	# The phone reader is open, because an iPhone home-screen app asks for the password again on each start.
 	# The EPUB files, the feeds and WebDAV still need the password.
-	@private not path /read /read/* /editions/*.jpg
-	header /read/* X-Robots-Tag "noindex, nofollow"
+	@private {
+		not path /read /read/* /editions/*.jpg
+		not {
+			path /dav/web/*
+			method PUT
+		}
+	}
+	# The phone reader saves its reading log here with a separate key that can only write to /dav/web/.
+	@sync {
+		path /dav/web/*
+		method PUT
+	}
+	basic_auth @sync {
+		sync <paste-the-sync-hash-here>
+	}
+	# no-cache: the browser checks for a new reader script on each load (a 304 when nothing changed).
+	header /read/* {
+		X-Robots-Tag "noindex, nofollow"
+		Cache-Control "no-cache"
+	}
 	basic_auth @private {
 		reader <paste-the-hash-here>
 	}

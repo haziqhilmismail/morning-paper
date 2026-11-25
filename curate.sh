@@ -28,6 +28,26 @@ instructions+=" Hard rule: open each article and check its publish date. Give it
      JOIN book b ON b.id = p.id_book WHERE p.start_time > max(strftime('%s', 'now', '-30 days'), strftime('%s', '$since', 'utc'))
        AND b.title NOT IN ('KOReader Quickstart Guide', 'feed_config', 'Morning Paper', 'Read Later')
      GROUP BY b.id HAVING sum(p.duration) >= 60 ORDER BY sum(p.duration) DESC LIMIT 15" 2>/dev/null || true
+  # Morning Paper articles read in the phone reader (reader/progress.js writes one log per device).
+  python3 - "$since" data/koreader/web/*.json <<'PY' 2>/dev/null || true
+import json, sys, time
+from datetime import datetime
+cutoff = max(time.time() - 30 * 86400, datetime.fromisoformat(sys.argv[1]).timestamp()) * 1000
+seen = {}
+for path in sys.argv[2:]:
+    try:
+        items = json.load(open(path)).get("items", {}).values()
+    except (OSError, ValueError, AttributeError):
+        continue  # no log yet (the glob stays unexpanded), or a half-written file
+    for it in items:
+        if it.get("last", 0) > cutoff:
+            title = " ".join(str(it.get("title", ""))[:200].split())
+            old = seen.get(title, (0, 0))
+            seen[title] = (old[0] + int(it.get("seconds", 0)), max(old[1], int(it.get("progress", 0))))
+for title, (sec, prog) in sorted(seen.items(), key=lambda x: -x[1][0])[:15]:
+    if sec >= 60:
+        print(f"{title} | Morning Paper web reader, {prog}% read | {sec // 60}")
+PY
 } | "${claude[@]}" -p "$instructions" --model opus --tools "WebSearch,WebFetch" --allowedTools "WebSearch,WebFetch" \
       --permission-mode default --strict-mcp-config \
   | grep -oE 'https://[^[:space:]<>()"]+' | sed 's/[.,;]$//' \
