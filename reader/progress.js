@@ -20,6 +20,14 @@
 		navigator.sendBeacon(new URL(`log?${q}`, base));
 	}
 
+	// The next page can take a moment to load, so mark the link that was tapped at once.
+	addEventListener("click", (e) => {
+		const a = e.target.closest?.("a[href]");
+		if (a && a.origin === location.origin && !a.hash) a.classList.add("tapped");
+	});
+	// Going back restores the old page from memory, mark and all.
+	addEventListener("pageshow", () => document.querySelectorAll(".tapped").forEach((a) => a.classList.remove("tapped")));
+
 	// The article pages are XHTML, which ignores defer, so wait for the body.
 	if (document.readyState === "loading") addEventListener("DOMContentLoaded", start);
 	else start();
