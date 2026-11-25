@@ -23,7 +23,8 @@ HEAD = ('<head><meta name="viewport" content="width=device-width, initial-scale=
         '<meta name="apple-mobile-web-app-title" content="Paper"/>'
         '<link rel="stylesheet" href="{up}reader.css"/>'
         '<link rel="manifest" href="{up}manifest.json" crossorigin="use-credentials"/>'
-        '<link rel="apple-touch-icon" href="{up}icon-192.png"/>')
+        '<link rel="apple-touch-icon" href="{up}icon-192.png"/>'
+        '<script src="{up}install.js" defer="defer"></script>')
 
 
 def label(name: str) -> str:
