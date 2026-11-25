@@ -1,0 +1,20 @@
+services:
+  paper-web:
+    image: caddy:2.11.6-alpine
+    container_name: paper-web
+    restart: unless-stopped
+    ports: ["127.0.0.1:8092:8092"]
+    mem_limit: 64m
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./www:/srv:ro
+  # KOReader statistics sync target. Only paper-web reaches it, behind its basic auth.
+  paper-dav:
+    image: rclone/rclone:1.69.0
+    container_name: paper-dav
+    restart: unless-stopped
+    user: "1000:1000"
+    mem_limit: 128m
+    command: serve webdav /data --addr :8080 --baseurl /dav
+    volumes:
+      - ./data/koreader:/data

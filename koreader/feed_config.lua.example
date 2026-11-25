@@ -1,0 +1,11 @@
+-- KOReader News Downloader feeds. Copy to koreader/news/feed_config.lua on the reader.
+-- Slot N is line N of feeds.txt, so you can change feeds.txt without a new copy of this file.
+-- Replace paper.example.com, reader and your-password with your own values.
+return {
+    { "https://paper.example.com/feeds/1.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
+    { "https://paper.example.com/feeds/2.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
+    { "https://paper.example.com/feeds/3.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
+    { "https://paper.example.com/feeds/4.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
+    { "https://paper.example.com/feeds/5.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
+    { "https://paper.example.com/feeds/6.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
+}

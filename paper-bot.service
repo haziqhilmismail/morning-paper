@@ -1,0 +1,11 @@
+[Unit]
+Description=Telegram bot that queues links for the morning paper
+
+[Service]
+EnvironmentFile=%h/morning-paper/.env
+ExecStart=/usr/bin/python3 %h/morning-paper/bot.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target
