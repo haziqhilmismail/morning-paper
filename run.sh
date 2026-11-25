@@ -25,11 +25,6 @@ py() {
 python3 feeds.py || echo "some feeds failed"
 ./curate.sh || echo "curation failed; building from the existing queue"
 
-# Links from the Telegram bot (bot.py) skip the age filter for 7 days after the share.
-touch data/shared.tsv
-awk -F"\t" -v c="$(date -d "7 days ago" +%F)" '$1 >= c {print $2}' data/shared.tsv > data/pinned.txt
-cat data/pinned.txt >> data/queue.txt
-
 rc=0; py scripts/kobo-digest-build.py || rc=$?
 # Upstream clears the queue only when Calibre is on. Every URL is now stored or logged as failed.
 : > data/queue.txt
