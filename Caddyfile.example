@@ -2,7 +2,7 @@
 #   docker run --rm caddy:2.11.6-alpine caddy hash-password --plaintext 'your-password'
 :8092 {
 	# The phone reader is open, because an iPhone home-screen app asks for the password again on each start.
-	# The EPUB files, the catalog, the feeds and WebDAV still need the password.
+	# The EPUB files, the feeds and WebDAV still need the password.
 	@private not path /read /read/* /editions/*.jpg
 	header /read/* X-Robots-Tag "noindex, nofollow"
 	basic_auth @private {

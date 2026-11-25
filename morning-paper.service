@@ -1,5 +1,5 @@
 [Unit]
-Description=Morning paper for KOReader (OPDS)
+Description=Morning paper for KOReader
 
 [Service]
 Type=oneshot
