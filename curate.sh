@@ -28,23 +28,31 @@ instructions+=" Hard rule: open each article and check its publish date. Give it
      JOIN book b ON b.id = p.id_book WHERE p.start_time > max(strftime('%s', 'now', '-30 days'), strftime('%s', '$since', 'utc'))
        AND b.title NOT IN ('KOReader Quickstart Guide', 'feed_config', 'Morning Paper', 'Read Later')
      GROUP BY b.id HAVING sum(p.duration) >= 60 ORDER BY sum(p.duration) DESC LIMIT 15" 2>/dev/null || true
-  # Morning Paper articles read in the phone reader (reader/progress.js writes one log per device).
-  python3 - "$since" data/koreader/web/*.json <<'PY' 2>/dev/null || true
+  # Morning Paper articles read in the phone reader: progress.js logs each session to data/logs/reading.log*.
+  python3 - "$since" data/logs/reading*.log <<'PY' 2>/dev/null || true
 import json, sys, time
 from datetime import datetime
-cutoff = max(time.time() - 30 * 86400, datetime.fromisoformat(sys.argv[1]).timestamp()) * 1000
+from urllib.parse import parse_qs, urlsplit
+cutoff = max(time.time() - 30 * 86400, datetime.fromisoformat(sys.argv[1]).timestamp())
 seen = {}
 for path in sys.argv[2:]:
     try:
-        items = json.load(open(path)).get("items", {}).values()
-    except (OSError, ValueError, AttributeError):
-        continue  # no log yet (the glob stays unexpanded), or a half-written file
-    for it in items:
-        if it.get("last", 0) > cutoff:
-            title = " ".join(str(it.get("title", ""))[:200].split())
-            old = seen.get(title, (0, 0))
-            seen[title] = (old[0] + int(it.get("seconds", 0)), max(old[1], int(it.get("progress", 0))))
-for title, (sec, prog) in sorted(seen.items(), key=lambda x: -x[1][0])[:15]:
+        lines = open(path).readlines()
+    except OSError:
+        continue  # no log yet (the glob stays unexpanded)
+    for line in lines:
+        try:
+            entry = json.loads(line)
+            q = {k: v[0] for k, v in parse_qs(urlsplit(entry["request"]["uri"]).query).items()}
+            if entry["ts"] < cutoff:
+                continue
+            key = (q["e"], q["a"])
+            title = " ".join(q.get("t", "")[:200].split())
+            old = seen.get(key, (title, 0, 0))
+            seen[key] = (title, old[1] + int(q.get("s", 0)), max(old[2], int(q.get("p", 0))))
+        except (ValueError, KeyError, TypeError):
+            continue
+for title, sec, prog in sorted(seen.values(), key=lambda v: -v[1])[:15]:
     if sec >= 60 and prog > 10:  # a minute of reading and past the first screens
         print(f"{title} | Morning Paper web reader, {prog}% read | {sec // 60}")
 PY

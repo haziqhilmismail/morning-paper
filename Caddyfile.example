@@ -1,30 +1,46 @@
+{
+	# The LAN reader comes through the host's Caddy: take the client address from its X-Forwarded-For.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 # Copy to Caddyfile. Make the hash with:
 #   docker run --rm caddy:2.11.6-alpine caddy hash-password --plaintext 'your-password'
 :8092 {
-	# The phone reader is open, because an iPhone home-screen app asks for the password again on each start.
+	# The phone reader (/read/) is for the LAN and Tailscale only: the tunnel adds Cf-Connecting-IP to every request.
+	@public_read {
+		header Cf-Connecting-IP *
+		path /read /read/*
+	}
+	handle @public_read {
+		respond 404
+	}
+	# Without a password, because an iPhone home-screen app asks for it again on each start.
 	# The EPUB files, the feeds and WebDAV still need the password.
-	@private {
-		not path /read /read/* /editions/*.jpg
-		not {
-			path /dav/web/*
-			method PUT
-		}
-	}
-	# The phone reader saves its reading log here with a separate key that can only write to /dav/web/.
-	@sync {
-		path /dav/web/*
-		method PUT
-	}
-	basic_auth @sync {
-		sync <paste-the-sync-hash-here>
+	@private not path /read /read/* /editions/*.jpg
+	basic_auth @private {
+		reader <paste-the-hash-here>
 	}
 	# no-cache: the browser checks for a new reader script on each load (a 304 when nothing changed).
 	header /read/* {
 		X-Robots-Tag "noindex, nofollow"
 		Cache-Control "no-cache"
 	}
-	basic_auth @private {
-		reader <paste-the-hash-here>
+	# Reading sessions: progress.js sends one request to /read/log per session, and only those are logged.
+	# curate.sh reads the log, and the Telegram bot names the devices (/devices).
+	log {
+		output file /logs/reading.log {
+			mode 0644
+			roll_size 10MiB
+			roll_keep 5
+		}
+		format json
+	}
+	@not_session not path /read/log
+	log_skip @not_session
+	handle /read/log {
+		respond 204
 	}
 	@dav path /dav /dav/*
 	handle @dav {

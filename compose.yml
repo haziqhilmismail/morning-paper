@@ -8,6 +8,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./www:/srv:ro
+      - ./data/logs:/logs
   # KOReader statistics sync target. Only paper-web reaches it, behind its basic auth.
   paper-dav:
     image: rclone/rclone:1.69.0

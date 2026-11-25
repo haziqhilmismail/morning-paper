@@ -1,5 +1,5 @@
 // Reading progress: a bar and the last position on articles, read counts on the editions list.
-// With a sync key, each device also writes its log to /dav/web/<device>.json for the curation (curate.sh).
+// Each reading session also goes to the server log (/read/log) for the curation (curate.sh).
 (() => {
 	const base = new URL(".", document.currentScript.src);
 	const STORE = "paper-reading";
@@ -7,32 +7,17 @@
 	let data = {};
 	try { data = JSON.parse(localStorage.getItem(STORE)) || {}; } catch {}
 	data.items ||= {};
+	delete data.key; // from the sync key, which the session log replaced
 	data.device ||= crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2);
 	const save = () => { try { localStorage.setItem(STORE, JSON.stringify(data)); } catch {} };
+	for (const [id, it] of Object.entries(data.items)) if (Date.now() - (it.last || 0) > 60 * DAY) delete data.items[id];
 
-	// The sync key comes once in the link (#sync=...) and stays on this device only.
-	// A sync code from the bot is "key:device name". A bare key keeps the name that the device had.
-	function useCode(code) {
-		const [key, ...name] = code.trim().split(":");
-		data.key = key || undefined;
-		if (name.length) data.name = name.join(":").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || data.name;
-	}
-	const fromLink = new URLSearchParams(location.hash.slice(1)).get("sync");
-	if (fromLink) {
-		useCode(fromLink);
-		history.replaceState(null, "", location.pathname);
-	}
 	save();
 
-	function push() {
-		if (!data.key) return;
-		for (const [id, it] of Object.entries(data.items)) if (Date.now() - it.last > 60 * DAY) delete data.items[id];
-		fetch(new URL(`/dav/web/${data.device}.json`, location), {
-			method: "PUT",
-			keepalive: true,
-			headers: { Authorization: "Basic " + btoa("sync:" + data.key), "Content-Type": "application/json" },
-			body: JSON.stringify({ device: data.device, name: data.name, items: data.items }),
-		}).catch(() => {});
+	// One request per session: the server logs its address with the time, the device address and the browser.
+	function send(it, page, seconds) {
+		const q = new URLSearchParams({ e: page[1], a: page[2], t: it.title, s: seconds, p: it.progress, d: data.device });
+		navigator.sendBeacon(new URL(`log?${q}`, base));
 	}
 
 	// The article pages are XHTML, which ignores defer, so wait for the body.
@@ -65,16 +50,26 @@
 
 			// Count only time when the page is visible and was used in the last minute, so an open tab does not count.
 			let used = Date.now();
+			let session = 0;
+			let sent = -1;
 			for (const e of ["scroll", "pointerdown", "keydown", "touchstart"]) addEventListener(e, () => { used = Date.now(); }, { passive: true });
 			addEventListener("scroll", measure, { passive: true });
 			setInterval(() => {
 				if (document.hidden || Date.now() - used > 60e3) return;
 				it.seconds += 5;
+				session += 5;
 				it.last = Date.now();
 				save();
 			}, 5e3);
-			addEventListener("visibilitychange", () => { if (document.hidden) { save(); push(); } });
-			addEventListener("pagehide", () => { save(); push(); });
+			// Leaving the page or the app ends the session. A new session starts when the page shows again.
+			const end = () => {
+				save();
+				if (session || it.progress !== sent) send(it, page, session);
+				session = 0;
+				sent = it.progress;
+			};
+			addEventListener("visibilitychange", () => { if (document.hidden) end(); });
+			addEventListener("pagehide", end);
 			return;
 		}
 
@@ -86,19 +81,6 @@
 				note.textContent = `${done} of ${li.dataset.total} read`;
 				li.querySelector("span").append(note);
 			}
-			const link = document.createElement("a");
-			link.href = "#";
-			link.textContent = data.key ? "Sync on" : "Turn on sync";
-			link.onclick = (e) => {
-				e.preventDefault();
-				const key = prompt("Paste the sync code. Send /synckey to the Telegram bot to get it. Without a code, your progress stays on this device only. Leave it empty to turn sync off.", data.key ? `${data.key}:${data.name || ""}` : "");
-				if (key === null) return;
-				useCode(key);
-				save();
-				push();
-				link.textContent = data.key ? "Sync on" : "Turn on sync";
-			};
-			document.querySelector(".colophon")?.append(" · ", link);
 		}
 	}
 })();

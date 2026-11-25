@@ -184,36 +184,67 @@ HELP = ("Send me an article link. I add it to the Shared feed, and News Download
         f"The feed keeps the {KEEP} newest links. Older links move to the archive. Links already on the e-reader stay there.")
 
 
-ASK_NAME = "Which device is the sync code for? Reply with a name, for example iphone or work-pc."
+DEVICES = HERE / "data" / "devices.tsv"
+ASK_NAME = "Name for device {}? Reply with a name, for example iphone or work-pc."
 
 
-def sync_key(name):
-    key = os.environ.get("READER_SYNC_KEY", "")
-    if not key:
-        return {"text": "No sync key is set. Put READER_SYNC_KEY in .env on the server."}
-    # One code holds the key and the name, so the reader asks one question only. The key has no ":".
-    code = f"{key}:{name}"
-    link = f"{os.environ.get('PAPER_URL', '')}/read/#sync={urllib.parse.quote(code)}"
-    return {"text": f"<b>Sync code for {html.escape(name)}</b> (keep it private)\n\n<code>{html.escape(code)}</code>\n\n"
-                    "Tap the code or Copy, then in the reader tap <b>Turn on sync</b> and paste it.",
-            "parse_mode": "HTML",
-            "reply_markup": {"inline_keyboard": [[{"text": "📋 Copy code", "copy_text": {"text": code}},
-                                                  {"text": "🌐 Open in browser", "url": link}]]}}
+def sessions():
+    """Reading sessions from the paper-web log (reader/progress.js sends one per article visit)."""
+    out = []
+    for path in sorted(HERE.glob("data/logs/reading*.log")):
+        for line in path.read_text().splitlines():
+            try:
+                entry = json.loads(line)
+                req = entry["request"]
+                q = {k: v[0] for k, v in urllib.parse.parse_qs(urlparse(req["uri"]).query).items()}
+                out.append({"ts": entry["ts"], "ip": req.get("client_ip", ""), "ua": (req.get("headers", {}).get("User-Agent") or [""])[0],
+                            "device": q.get("d", ""), "title": q.get("t", ""), "seconds": int(q.get("s", 0))})
+            except (ValueError, KeyError, TypeError):
+                continue
+    return out
+
+
+def kind(ua, ip):
+    hw = next((n for n in ("iPhone", "iPad", "Android", "Mac", "Windows", "Linux") if n in ua), "unknown")
+    app = "app" if "Safari" not in ua and hw in ("iPhone", "iPad") else "browser"
+    net = "Tailscale" if ip.startswith("100.") else "home Wi-Fi" if ip.startswith("192.168.") else ip
+    return f"{hw} {app}, {net}"
+
+
+def devices_view():
+    names = dict(r[:2] for r in read(DEVICES))
+    per = {}
+    for s in sessions():
+        d = per.setdefault(s["device"], {"n": 0, "sec": 0})
+        d.update(last=s["ts"], ip=s["ip"], ua=s["ua"], title=s["title"])
+        d["n"] += 1
+        d["sec"] += s["seconds"]
+    if not per:
+        return {"text": "No reading sessions yet. Read an article in the reader first."}
+    rows = sorted(per.items(), key=lambda x: -x[1]["last"])
+    lines = [f'{i}. <b>{html.escape(names.get(dev, "unnamed"))}</b> · {html.escape(kind(d["ua"], d["ip"]))}\n'
+             f'{d["n"]} sessions, {d["sec"] // 60} min · last {datetime.fromtimestamp(d["last"]):%a %-d %b %H:%M}: '
+             f'{html.escape(d["title"][:60])}' for i, (dev, d) in enumerate(rows, 1)]
+    return {"text": "<b>Reading devices</b>\n\n" + "\n\n".join(lines), "parse_mode": "HTML",
+            "reply_markup": {"inline_keyboard": [[{"text": f"✏️ Name {i}", "callback_data": f"n:{dev}"}]
+                                                 for i, (dev, _) in enumerate(rows, 1)]}}
 
 
 def handle(msg):
     text = (msg.get("text") or "").strip()
     cmd = (text.split() or [""])[0].split("@")[0]
     # The answer to ASK_NAME: Telegram marks it as a reply to that question (force_reply).
-    if (msg.get("reply_to_message") or {}).get("text") == ASK_NAME and text and not text.startswith("/"):
+    asked = re.match(r"Name for device ([\w-]+)\?", (msg.get("reply_to_message") or {}).get("text", ""))
+    if asked and text and not text.startswith("/"):
         # Device names are lower case with no spaces, for example "work-pc".
-        name = re.sub(r"[^a-z0-9-]+", "-", text.lower()).strip("-")[:30]
-        return sync_key(name or "device")
+        dev, label = asked.group(1), re.sub(r"[^a-z0-9-]+", "-", text.lower()).strip("-")[:30] or "device"
+        save(DEVICES, [r for r in read(DEVICES) if r[0] != dev] + [[dev, label]])
+        return devices_view()
     if cmd in ("/now", "🗞"):
         subprocess.run(["systemctl", "--user", "start", "--no-block", "morning-paper.service"], check=True)
         return {"text": "Building the paper now. It is ready in about 10 minutes."}
-    if cmd == "/synckey":
-        return {"text": ASK_NAME, "reply_markup": {"force_reply": True, "input_field_placeholder": "Device name"}}
+    if cmd == "/devices":
+        return devices_view()
     if cmd in ("/list", "📋"):
         return view()
     if cmd in ("/archived", "🗄"):
@@ -235,7 +266,7 @@ def main():
     chat_id = int(os.environ["PAPER_BOT_CHAT_ID"])
     write_feed()
     commands = [("list", "Show the Shared feed"), ("archived", "Show the archive"), ("now", "Rebuild the paper"),
-                ("synckey", "Get the reader sync key")]
+                ("devices", "Name the devices you read on")]
     try:
         api("setMyCommands", commands=[{"command": c, "description": d} for c, d in commands])
     except OSError as e:
@@ -254,6 +285,11 @@ def main():
                 if "callback_query" in upd:
                     cq = upd["callback_query"]
                     if cq["from"]["id"] != chat_id or cq.get("message", {}).get("chat", {}).get("id") != chat_id:
+                        continue
+                    if cq.get("data", "").startswith("n:"):
+                        api("answerCallbackQuery", callback_query_id=cq["id"])
+                        api("sendMessage", chat_id=chat_id, text=ASK_NAME.format(cq["data"][2:]),
+                            reply_markup={"force_reply": True, "input_field_placeholder": "Device name"})
                         continue
                     note, reply = press(cq.get("data", ""))
                     api("answerCallbackQuery", callback_query_id=cq["id"], text=note)
