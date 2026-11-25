@@ -195,6 +195,7 @@ The bot adds the links that you send it to the next paper. The links skip the 7-
 | Variable | Used by | Meaning |
 |---|---|---|
 | `PAPER_TZ` | `run.sh`, `curate.sh` | IANA time zone for the masthead date, the 7-day window and the curation cutoff. The default is `UTC`. |
+| `READING_SINCE` | `curate.sh` | Optional. The curation counts KOReader reading only from this date (`YYYY-MM-DD`). Use it when the reader had an earlier owner. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | `curate.sh` | The token for the Claude CLI. |
 | `CLAUDE_CONTAINER` | `curate.sh` | The name of a running container that has the Claude CLI. If it is empty, `curate.sh` runs `claude` on the host. |
 | `PAPER_BOT_TOKEN` | `bot.py` | The Telegram bot token. |

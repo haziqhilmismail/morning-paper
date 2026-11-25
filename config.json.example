@@ -2,5 +2,6 @@
   "data_dir": "/data",
   "calibre_enabled": false,
   "genres": [],
-  "lead_image_avoid_faces": false
+  "lead_image_avoid_faces": false,
+  "book_title": "Morning Paper"
 }
