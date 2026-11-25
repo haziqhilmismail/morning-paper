@@ -194,10 +194,11 @@ def sync_key(name):
     # One code holds the key and the name, so the reader asks one question only. The key has no ":".
     code = f"{key}:{name}"
     link = f"{os.environ.get('PAPER_URL', '')}/read/#sync={urllib.parse.quote(code)}"
-    return {"text": f"Sync code for {name} (keep it private):\n\n{code}\n\n"
-                    f"In the reader on {name}, tap \"Turn on sync\" at the bottom of the editions list and paste the code. "
-                    f"In a browser, you can open this link once instead:\n{link}",
-            "link_preview_options": {"is_disabled": True}}
+    return {"text": f"<b>Sync code for {html.escape(name)}</b> (keep it private)\n\n<code>{html.escape(code)}</code>\n\n"
+                    "Tap the code or Copy, then in the reader tap <b>Turn on sync</b> and paste it.",
+            "parse_mode": "HTML",
+            "reply_markup": {"inline_keyboard": [[{"text": "📋 Copy code", "copy_text": {"text": code}},
+                                                  {"text": "🌐 Open in browser", "url": link}]]}}
 
 
 def handle(msg):
