@@ -146,6 +146,8 @@ Do these steps on the e-reader. Use the user name and the password from your `Ca
 3. Put `feed_config.lua` in that folder. You can use a USB cable, or KOReader **Cloud storage** (step 1 of the next section). KOReader shows only book files, so give the file a `.txt` name on the server, download it, and rename it to `feed_config.lua`. To see the renamed file, turn on **Show unsupported files** in the file browser settings.
 4. Each morning, open ☰, then **News downloader**, then **Sync news feeds**.
 
+To sync with one gesture, copy `koreader/1-news-sync-gesture.lua` to `koreader/patches/` on the reader and restart KOReader. Then open **Gesture manager**, pick a gesture, and select **Sync news feeds** under **General**. KOReader has no such gesture action without this patch.
+
 One sync gets the new edition, the 6 feed slots and the Shared feed. Each feed gets a folder with the feed's own title, and the editions go to `Morning Paper`. The file lists fixed URLs, so you do not copy it again when you change `feeds.txt`. KOReader never deletes the editions and posts that it downloaded.
 
 ### Optional: send your reading statistics
