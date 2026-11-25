@@ -19,6 +19,8 @@ Based on [jstriblet/kobo-morning-paper](https://github.com/jstriblet/kobo-mornin
 5. `prune_short.py` removes articles with fewer than 400 words, because those are usually paywall previews. If it removes one, the build runs again.
 6. `run.sh` copies the EPUB to `www/editions/` and writes `www/opds.xml`. The catalog lists the 7 newest editions, newest first.
 
+7. `reader.py` turns each edition into web pages in `www/read/`, for a phone browser.
+
 The `paper-web` container serves `www/` behind a password. KOReader reads the OPDS catalog and downloads each new edition.
 
 ## What you need
@@ -113,6 +115,12 @@ The curation uses the books you read as 10% of the picks.
 2. Open **Tools**, then **Reading statistics**, then **Settings**, then **Cloud sync**. Select the WebDAV storage and its top folder.
 3. Tap **Synchronize now**. The server stores the file at `data/koreader/statistics.sqlite3`.
 
+## Read the paper on your phone
+
+Open `https://paper.example.com/read/` in the phone browser and log in. The page lists the editions, newest first. Tap an edition to open its front page, and tap a story to read it.
+
+To install the reader as an app, open the browser menu and tap **Add to Home Screen** (Safari) or **Install app** (Chrome). The reader needs a connection to the server. It does not keep editions for offline use.
+
 ## Check that it works
 
 1. Run `systemctl --user list-timers morning-paper.timer`. The **NEXT** column shows the next run.
@@ -164,7 +172,7 @@ The bot adds the links that you send it to the next paper. The links skip the 7-
 |---|---|
 | `upstream/` | A clone of `jstriblet/kobo-morning-paper` at the tested commit. `run.sh` clones it when it is missing. |
 | `data/` | The queue, the stored articles, `build.log`, the edition number, and the KOReader statistics in `data/koreader/`. |
-| `www/` | The files that `paper-web` serves: `opds.xml`, `editions/` and `feeds/`. |
+| `www/` | The files that `paper-web` serves: `opds.xml`, `editions/`, `feeds/` and the phone reader in `read/`. |
 
 ## License
 
