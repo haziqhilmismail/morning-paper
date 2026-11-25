@@ -165,7 +165,7 @@ The reader shows a progress bar on each article and opens it again where you sto
 To let the curation use this reading, turn on sync:
 
 1. Make a key and put it in `READER_SYNC_KEY` in `.env`. Put its hash in the `sync` line of the `Caddyfile`. The key can only write files to `/dav/web/`.
-2. In the reader, tap **Turn on sync** at the bottom of the editions list, and paste the key. To get the key on a new device, send `/synckey` to the Telegram bot. In a browser, you can also open `https://paper.example.com/read/#sync=<key>` once.
+2. In the reader, tap **Turn on sync** at the bottom of the editions list, and paste the key. To get the key on a new device, send `/synckey` to the Telegram bot. The bot first asks for a name for the device, then sends the key and a link. The reader asks for the same name and saves it in the log. In a browser, you can also open `https://paper.example.com/read/#sync=<key>` once.
 
 Each device then saves its log to `data/koreader/web/<device>.json`. A device without the key keeps its progress bar, last position and read counts, but sends nothing, so the curation does not see its reading. `curate.sh` adds an article to MY READING when you read it for one minute or more and past 10% of its length.
 
