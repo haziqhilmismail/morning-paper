@@ -10,4 +10,6 @@ return {
     { "https://paper.example.com/feeds/6.xml", limit = 5, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
     -- Links sent to the Telegram bot (bot.py). The server puts each full article in the feed, so the reader opens no other site.
     { "https://paper.example.com/feeds/shared.xml", limit = 20, download_full_article = false, include_images = true, http_auth = { username = "reader", password = "your-password" } },
+    -- Morning Paper editions (run.sh). Each link is the EPUB on this server, so News Downloader saves it as a book.
+    { "https://paper.example.com/feeds/paper.xml", limit = 3, download_full_article = true, include_images = true, http_auth = { username = "reader", password = "your-password" } },
 }

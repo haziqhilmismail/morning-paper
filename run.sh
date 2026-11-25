@@ -64,5 +64,19 @@ now=$(date -u +%FT%TZ)
   echo '</feed>'
 } > www/.opds.xml
 mv www/.opds.xml www/opds.xml
+# The same editions as an RSS feed, so one News Downloader sync gets the paper with the other feeds.
+# News Downloader saves a link that returns an EPUB as a book, and it needs full URLs.
+if [ -n "${PAPER_URL:-}" ]; then
+  {
+    echo '<?xml version="1.0" encoding="UTF-8"?>'
+    echo "<rss version=\"2.0\"><channel><title>Morning Paper</title><link>$PAPER_URL/read/</link><description>Morning Paper editions</description>"
+    for f in $(ls -1 www/editions/*.epub | sort -V -r); do
+      n=$(basename "$f" .epub); d=${n#morning-paper-}; d=${d%-no*}; e=${n##*-no}
+      echo "<item><title>Morning Paper $d No. $e</title><link>$PAPER_URL/editions/$n.epub</link><guid>$n</guid><pubDate>$(date -u -R -r "$f")</pubDate></item>"
+    done
+    echo '</channel></rss>'
+  } > www/feeds/.paper.xml
+  mv www/feeds/.paper.xml www/feeds/paper.xml
+fi
 python3 reader.py
 echo "published $(date -Is)"
