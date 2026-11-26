@@ -27,41 +27,41 @@ FALLBACK_TOPIC = "More reads"
 
 CSS = """
 body { margin: 0; color: #000; }
-.paper { font-family: "PT Serif", serif; color: #000; padding: 0 0.6em; }
+.paper { font-family: "PT Serif", serif; color: #000; text-align: left; }
 .paper a { color: #000; text-decoration: none; }
 .paper table { display: table; }
 .paper td { border-bottom: 0; }
-h1, h2, h3, p { margin: 0; color: #000; }
-.mast { font-family: "Masthead", serif; font-weight: normal; font-size: 2.9em; line-height: 1.1;
+.paper h1, .paper h2, .paper h3, .paper p { margin: 0; color: #000; text-indent: 0; text-align: left; }
+.paper .mast { font-family: "Masthead", serif; font-weight: normal; font-size: 2.6em; line-height: 1.1;
   text-align: center; border-bottom: 3px double #000; }
-.tag { text-align: center; font-style: italic; font-size: 0.9em; padding: 0.2em 0; border-bottom: 1px solid #000; }
-.dateline { width: 100%; border-collapse: collapse; border-bottom: 2px solid #000; font-size: 0.72em;
-  font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
-.dateline td { padding: 0.3em 0; }
-.kicker { font-size: 0.68em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.14em; }
-.lead { padding: 0.5em 0; border-bottom: 2px solid #000; }
-.lead h2 { font-size: 1.75em; line-height: 1.1; margin: 0.15em 0 0.3em; }
-.lead.text h2 { font-size: 2.3em; }
-.lead p.dek { font-size: 0.95em; line-height: 1.35; margin: 0.35em 0 0.25em; }
-.lead.text p.dek { font-size: 1.05em; }
-.photo { text-align: center; margin: 0; }
-.photo img { border: 1px solid #000; }
-.meta { width: 100%; border-collapse: collapse; font-size: 0.75em; }
+.paper .tag { text-align: center; font-style: italic; font-size: 0.85em; padding: 0.15em 0; border-bottom: 1px solid #000; }
+.dateline { width: 100%; border-collapse: collapse; border-bottom: 2px solid #000; font-size: 0.66em;
+  font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; }
+.dateline td { width: 28%; padding: 0.3em 0; }
+.dateline td.mid { width: 44%; }
+.paper .kicker { font-size: 0.62em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.14em; }
+.lead { padding: 0.4em 0; border-bottom: 2px solid #000; }
+.paper .lead h2 { font-size: 1.45em; line-height: 1.1; margin: 0.1em 0 0.25em; }
+.paper .lead.text h2 { font-size: 1.9em; }
+.paper .lead p.dek { font-size: 0.85em; line-height: 1.3; margin: 0.3em 0 0.2em; }
+.paper .lead.text p.dek { font-size: 0.95em; }
+.paper .photo { text-align: center; margin: 0; }
+.meta { width: 100%; border-collapse: collapse; font-size: 0.68em; }
 .meta td { padding: 0; font-style: italic; }
 .meta td.r { text-align: right; font-style: normal; font-weight: bold; white-space: nowrap; }
-.cols { width: 100%; border-collapse: collapse; margin-top: 0.4em; }
+.cols { width: 100%; border-collapse: collapse; margin-top: 0.3em; }
 .cols td.col { width: 50%; vertical-align: top; padding: 0; }
-.cols td.left { padding-right: 0.6em; border-right: 1px solid #000; }
-.cols td.right { padding-left: 0.6em; }
+.cols td.left { padding-right: 0.5em; }
+.cols td.right { padding-left: 0.5em; border-left: 1px solid #000; }
 .cols.next { page-break-before: always; margin-top: 0; }
-.sec { margin-bottom: 0.5em; }
-.sec .kicker { border-bottom: 1px solid #000; padding-bottom: 0.2em; }
+.sec { margin-bottom: 0.4em; }
+.sec .kicker { border-bottom: 1px solid #000; padding-bottom: 0.15em; }
 .count { float: right; }
-.item { padding: 0.35em 0; border-bottom: 1px dotted #000; }
+.item { padding: 0.3em 0; border-bottom: 1px dotted #000; }
 .item.last { border-bottom: 0; }
-.item .photo { margin: 0.2em 0; }
-.item h3 { font-size: 0.95em; line-height: 1.2; margin-bottom: 0.1em; }
-.foot { border-top: 1px solid #000; padding-top: 0.25em; margin-top: 0.3em; font-size: 0.72em;
+.paper .item .photo { margin: 0.2em 0; }
+.paper .item h3 { font-size: 0.85em; line-height: 1.2; margin-bottom: 0.1em; }
+.paper .foot { border-top: 1px solid #000; padding-top: 0.25em; margin-top: 0.3em; font-size: 0.66em;
   text-align: center; font-style: italic; }
 """
 
@@ -172,7 +172,7 @@ def render(stories: list[dict], lead: dict, screens: list[list], more: int, pape
 <h1 class="mast">{e(title)}</h1>
 <p class="tag">{e(tagline)}</p>
 <table class="dateline"><tr><td>Vol. I · No. {e(edition)}</td>
-<td style="text-align:center">{today:%A %-d %B %Y}</td>
+<td class="mid" style="text-align:center">{today:%A %-d %B %Y}</td>
 <td style="text-align:right">{len(stories)} reads · {total_time(sum(s["minutes"] for s in stories))}</td></tr></table>
 <div class="lead{"" if lead.get("photo") else " text"}">
 {f'<p class="kicker">{e(lead["topic"])}</p>' if lead["run"] else ""}
@@ -217,10 +217,10 @@ def text_front_page(kdb, book, articles: list[dict]):
             images[s["photo"][0]] = buf.getvalue()
         return bool(im)
 
-    lead_has_photo = add_photo(lead, (1000, 380))
+    lead_has_photo = add_photo(lead, (1000, 360))
     lead["dek"] = dek(lead["html"], 2, 220) if lead_has_photo else dek(lead["html"], 4, 420)
     for col in screens[0] + screens[1]:  # one photo per column on each screen
-        next((s for _, items in col for s in items if add_photo(s, (500, 220))), None)
+        next((s for _, items in col for s in items if add_photo(s, (500, 180))), None)
     paper = (kdb.PAPER_TITLE, kdb.PAPER_TAGLINE, kdb.EDITION_FILE.read_text().strip())
     page_html = render(stories, lead, screens, len(stories) - 1 - len(picked), paper, datetime.now())
 
