@@ -62,7 +62,7 @@ PY
     # Each answer line is "URL Section", most important first. frontpage.py reads topics.tsv
     # (URL, section, run, rank) for the lead and the sections.
     match($0, /^[[:space:][:digit:].)*-]*https:\/\/[^[:space:]<>()"]+/) {
-      line = substr($0, RSTART, RLENGTH); u = substr(line, index(line, "https://")); sub(/[.,;]$/, "", u)
+      line = substr($0, RSTART, RLENGTH); u = substr(line, index(line, "https://")); sub(/[.,;*]+$/, "", u)
       t = substr($0, RSTART + RLENGTH); gsub(/\t/, " ", t)
       if (tolower(u) ~ /^https:\/\/([^\/]*@)?([0-9.]+|\[|localhost\.?)([:\/]|$)/ || seen[u]++ || n >= 12) next
       n++; print u; print u "\t" t "\t" run "\t" n >> "data/topics.tsv"
