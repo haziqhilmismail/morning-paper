@@ -106,9 +106,12 @@ footer {
 .front main img { width: 100%; display: block; }
 .front main a { display: block; }
 .front main .photo img { display: inline; }
+/* KOReader adds its own page margins to the text front page; a browser does not. */
+.front .paper { padding: 0 16px; }
 /* On a phone, the two columns of the text front page become one. */
 @media (max-width: 560px) {
-	.front .mast { font-size: 2.2em; }
+	.front .paper .mast { font-size: min(2.6em, 10.5vw); }
+	.front .dateline td, .front .dateline td.mid { display: block; width: auto; padding: 0.1em 0; text-align: center !important; }
 	.front .cols td.col { display: block; width: auto; padding: 0; border: 0; }
 }
 @media (min-width: 800px) {
