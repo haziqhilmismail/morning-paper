@@ -213,7 +213,7 @@ def text_front_page(kdb, book, articles: list[dict]):
             images[s["photo"][0]] = buf.getvalue()
         return bool(im)
 
-    lead_has_photo = add_photo(lead, (1000, 560))
+    lead_has_photo = add_photo(lead, (1000, 380))
     lead["dek"] = dek(lead["html"], 2, 220) if lead_has_photo else dek(lead["html"], 4, 420)
     for col in cols:  # one photo per column keeps the page near one screen
         next((s for _, items in col for s in items if add_photo(s, (500, 220))), None)
