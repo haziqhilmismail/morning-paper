@@ -23,11 +23,10 @@ flowchart TD
 		feedspy["feeds.py<br/>feeds.txt to www/feeds/1.xml ... 6.xml"]
 		curate["curate.sh<br/>Claude CLI with web search"]
 		queue["data/queue.txt<br/>about 10 URLs"]
-		build["Upstream build in Docker<br/>upstream/ mounted read-only"]
+		build["frontpage.py: upstream build in Docker<br/>with a text front page"]
 		prune["prune_short.py<br/>drops articles under 400 words"]
-		front["frontpage.py<br/>text front page"]
 		publish["www/editions/*.epub, www/feeds/paper.xml<br/>reader.py: www/read/"]
-		feedspy --> curate --> queue --> build --> prune --> front --> publish
+		feedspy --> curate --> queue --> build --> prune --> publish
 	end
 
 	prompt["my-prompt.txt<br/>your topics: 60%"] --> curate
@@ -45,12 +44,11 @@ Each run does these steps:
 
 1. `feeds.py` downloads the feeds in `feeds.txt` to `www/feeds/1.xml` to `www/feeds/6.xml`. It removes Substack posts that are only previews for paid subscribers.
 2. `curate.sh` sends two inputs to the Claude CLI: your topics in `my-prompt.txt` (60%), and the posts and books that you read in KOReader in the last 30 days (40%). Feed posts that you do not read have no effect. Claude uses web search and returns about 10 article URLs from the last 7 days.
-3. Claude returns each URL with a section name, for example `Malaysia`. The URLs go to `data/queue.txt` and the sections go to `data/topics.tsv`.
-4. The upstream build fetches each URL, extracts the text, and makes an EPUB with a front page. Articles that are older than 7 days are not included.
+3. Claude returns each URL with a section name, for example `Malaysia`, most important first. The URLs go to `data/queue.txt`. The sections and the order go to `data/topics.tsv`.
+4. The upstream build fetches each URL, extracts the text, and makes an EPUB. Articles that are older than 7 days are not included. `frontpage.py` runs this build and gives it a text front page in black, in place of the upstream front page of images with gray text. The lead story is the one that Claude put first in the newest curation. The other stories are in sections, and a story without a section goes into **More reads**. The photos are grayscale and show the full image, with no crop. If the text front page fails, the EPUB gets the upstream front page.
 5. `prune_short.py` removes articles with fewer than 400 words, because those are usually paywall previews. If it removes one, the build runs again.
-6. `frontpage.py` replaces the upstream front page, which is a set of images with gray text, with a text page in black: the masthead, the lead story with its photo, and the other stories in sections. The photos are grayscale and keep their full frame. Without a section name, a story goes into **More reads**.
-7. `run.sh` copies the EPUB to `www/editions/` and writes `www/feeds/paper.xml`, a feed of the 7 newest editions.
-8. `reader.py` turns each edition into web pages in `www/read/`, for a phone browser.
+6. `run.sh` copies the EPUB to `www/editions/` and writes `www/feeds/paper.xml`, a feed of the 7 newest editions.
+7. `reader.py` turns each edition into web pages in `www/read/`, for a phone browser.
 
 The `paper-web` container serves `www/` behind a password. One News Downloader sync in KOReader gets the new edition, your feeds and the links that you shared.
 
@@ -67,7 +65,7 @@ flowchart LR
 	subgraph up["upstream/ (MIT)"]
 		builder["scripts/kobo-digest-build.py<br/>fetch, extract, EPUB, cover"]
 	end
-	scripts -- "docker run, /app read-only" --> builder
+	scripts -- "docker run frontpage.py, /app read-only" --> builder
 	builder -- "data/read-later.epub, data/cover.jpg" --> scripts
 ```
 

@@ -100,11 +100,17 @@ footer {
 .colophon { margin: 0; font-size: 13px; text-align: center; }
 .colophon a { color: inherit; }
 
-/* The front page is a set of images made for an e-reader: keep them at paper width on a big screen. */
+/* The front page is made for an e-reader (older editions: a set of images): keep it at paper width on a big screen. */
 /* iOS 26 blurs a band just below the status bar, so the first line starts below that band. */
 .front main { max-width: 760px; padding: calc(env(safe-area-inset-top) + 16px) 0 0; }
 .front main img { width: 100%; display: block; }
 .front main a { display: block; }
+.front main .photo img { display: inline; }
+/* On a phone, the two columns of the text front page become one. */
+@media (max-width: 560px) {
+	.front .mast { font-size: 2.2em; }
+	.front .cols td.col { display: block; width: auto; padding: 0; border: 0; }
+}
 @media (min-width: 800px) {
 	.front main { margin-top: 24px; }
 	.front main { box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.06); }
