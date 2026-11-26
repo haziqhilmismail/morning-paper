@@ -58,7 +58,7 @@ h1, h2, h3, p { margin: 0; color: #000; }
 .count { float: right; }
 .item { padding: 0.35em 0; border-bottom: 1px dotted #000; }
 .item.last { border-bottom: 0; }
-.item .photo { margin-bottom: 0.3em; }
+.item .photo { margin: 0.2em 0; }
 .item h3 { font-size: 0.95em; line-height: 1.2; margin-bottom: 0.1em; }
 .foot { border-top: 1px solid #000; padding-top: 0.25em; margin-top: 0.3em; font-size: 0.72em;
   text-align: center; font-style: italic; }
@@ -156,8 +156,8 @@ def render(stories: list[dict], lead: dict, cols: list, more: int, paper: tuple[
                 f' style="width:{s["photo"][1]}%"/></a></p>') if s.get("photo") else ""
 
     def item(s: dict, last: bool) -> str:
-        return (f'<div class="item{" last" if last else ""}">{img(s)}'
-                f'<h3><a href="{s["href"]}">{e(s["title"])}</a></h3><table class="meta"><tr>'
+        return (f'<div class="item{" last" if last else ""}"><h3><a href="{s["href"]}">{e(s["title"])}</a></h3>'
+                f'{img(s)}<table class="meta"><tr>'
                 f'<td>{e(s["domain"])}</td><td class="r">{s["minutes"]} min</td></tr></table></div>')
 
     def column(sections: list) -> str:
@@ -216,7 +216,7 @@ def text_front_page(kdb, book, articles: list[dict]):
     lead_has_photo = add_photo(lead, (1000, 560))
     lead["dek"] = dek(lead["html"], 2, 220) if lead_has_photo else dek(lead["html"], 4, 420)
     for col in cols:  # one photo per column keeps the page near one screen
-        next((s for _, items in col for s in items if add_photo(s, (500, 340))), None)
+        next((s for _, items in col for s in items if add_photo(s, (500, 220))), None)
     paper = (kdb.PAPER_TITLE, kdb.PAPER_TAGLINE, kdb.EDITION_FILE.read_text().strip())
     page_html = render(stories, lead, cols, len(stories) - 1 - len(picked), paper, datetime.now())
 
