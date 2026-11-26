@@ -10,7 +10,7 @@ export PATH="$HOME/.local/bin:$PATH"
 claude=(timeout 20m claude)
 if [ -n "${CLAUDE_CONTAINER:-}" ]; then claude=(docker exec -i -e CLAUDE_CODE_OAUTH_TOKEN "$CLAUDE_CONTAINER" timeout 20m claude); fi
 
-instructions='You pick articles for my morning e-reader paper. Stdin has two parts: MY PROMPT (my own words, top priority) and MY READING (posts and books I read on my e-reader in the last 30 days, with minutes read, which show my taste: find similar articles from other sources on the same subjects, never the same posts). Split the articles by input: 60% MY PROMPT, 40% MY READING. If MY READING is empty, use MY PROMPT for all articles. Use web search to find about 10 articles from the last 7 days that match. Prefer long-form readable articles. No paywalls (also skip Substack posts for paid subscribers only), videos, PDFs or social media posts. Output only the article URLs, one per line, with no other text.'
+instructions='You pick articles for my morning e-reader paper. Stdin has two parts: MY PROMPT (my own words, top priority) and MY READING (posts and books I read on my e-reader in the last 30 days, with minutes read, which show my taste: find similar articles from other sources on the same subjects, never the same posts). Split the articles by input: 60% MY PROMPT, 40% MY READING. If MY READING is empty, use MY PROMPT for all articles. Use web search to find about 10 articles from the last 7 days that match. Prefer long-form readable articles. No paywalls (also skip Substack posts for paid subscribers only), videos, PDFs or social media posts. Articles in English are preferred. An article in Malay is fine when no English source has the same story or analysis. Output one line per article and no other text: the URL, a space, and the section name. Put the most important article first (it leads the front page) and the others in order of importance. The section name is one or two words for the MY PROMPT topic line that the article matches, for example Data, Ideas, Malaysia or Urbanism (use the same name for a topic each day), or Your reading for a MY READING article.'
 # Same cutoff as the build's 7-day filter (max_age_days in the upstream config); older articles are built but then dropped.
 cutoff=$(date -d "7 days ago" +%F)
 instructions+=" Hard rule: open each article and check its publish date. Give it only if it was published on or after $cutoff. If you cannot find the date, skip the article. Give fewer articles rather than older ones."
@@ -58,6 +58,12 @@ for title, sec, prog in sorted(seen.values(), key=lambda v: -v[1])[:15]:
 PY
 } | "${claude[@]}" -p "$instructions" --model opus --tools "WebSearch,WebFetch" --allowedTools "WebSearch,WebFetch" \
       --permission-mode default --strict-mcp-config \
-  | grep -oE 'https://[^[:space:]<>()"]+' | sed 's/[.,;]$//' \
-  | grep -viE '^https://([^/]*@)?([0-9.]+|\[|localhost\.?)([:/]|$)' \
-  | awk '!seen[$0]++ && n++ < 12' | tee -a data/queue.txt | grep -q .
+  | awk -v run="$(date +%s)" '
+    # Each answer line is "URL Section", most important first. frontpage.py reads topics.tsv
+    # (URL, section, run, rank) for the lead and the sections.
+    match($0, /^[[:space:][:digit:].)*-]*https:\/\/[^[:space:]<>()"]+/) {
+      line = substr($0, RSTART, RLENGTH); u = substr(line, index(line, "https://")); sub(/[.,;*]+$/, "", u)
+      t = substr($0, RSTART + RLENGTH); gsub(/\t/, " ", t)
+      if (tolower(u) ~ /^https:\/\/([^\/]*@)?([0-9.]+|\[|localhost\.?)([:\/]|$)/ || seen[u]++ || n >= 12) next
+      n++; print u; print u "\t" t "\t" run "\t" n >> "data/topics.tsv"
+    }' | tee -a data/queue.txt | grep -q .

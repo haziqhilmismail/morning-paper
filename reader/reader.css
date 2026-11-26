@@ -100,11 +100,20 @@ footer {
 .colophon { margin: 0; font-size: 13px; text-align: center; }
 .colophon a { color: inherit; }
 
-/* The front page is a set of images made for an e-reader: keep them at paper width on a big screen. */
+/* The front page is made for an e-reader (older editions: a set of images): keep it at paper width on a big screen. */
 /* iOS 26 blurs a band just below the status bar, so the first line starts below that band. */
 .front main { max-width: 760px; padding: calc(env(safe-area-inset-top) + 16px) 0 0; }
 .front main img { width: 100%; display: block; }
 .front main a { display: block; }
+.front main .photo img { display: inline; }
+/* KOReader adds its own page margins to the text front page; a browser does not. */
+.front .paper { padding: 0 16px; }
+/* On a phone, the two columns of the text front page become one. */
+@media (max-width: 560px) {
+	.front .paper .mast { font-size: min(2.6em, 10.5vw); }
+	.front .dateline td, .front .dateline td.mid { display: block; width: auto; padding: 0.1em 0; text-align: center !important; }
+	.front .cols td.col { display: block; width: auto; padding: 0; border: 0; }
+}
 @media (min-width: 800px) {
 	.front main { margin-top: 24px; }
 	.front main { box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.06); }

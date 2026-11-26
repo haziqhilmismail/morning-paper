@@ -17,16 +17,18 @@ git -C upstream checkout -q eef60f736a827b4a49245299928b862e92552513
 
 docker build -q -t morning-paper . >/dev/null
 
+# frontpage.py runs the upstream build with a text front page in place of the image one.
 py() {
   docker run --rm --memory 1g --user "$(id -u):$(id -g)" \
     -v "$PWD/upstream:/app:ro" -v "$PWD/data:/data" -v "$PWD/config.json:/config.json:ro" \
-    -e KOBO_PAPER_CONFIG=/config.json -e TZ morning-paper python "$1"
+    -v "$PWD/frontpage.py:/frontpage.py:ro" \
+    -e KOBO_PAPER_CONFIG=/config.json -e TZ morning-paper python "$@"
 }
 
 python3 feeds.py || echo "some feeds failed"
 ./curate.sh || echo "curation failed; building from the existing queue"
 
-rc=0; py scripts/kobo-digest-build.py || rc=$?
+rc=0; py /frontpage.py || rc=$?
 # Upstream clears the queue only when Calibre is on. Every URL is now stored or logged as failed.
 : > data/queue.txt
 [ "$rc" -eq 0 ] || exit "$rc"
@@ -35,7 +37,7 @@ pruned=$(python3 prune_short.py data/articles)
 if [ -n "$pruned" ]; then
   echo "$pruned"
   echo $(( $(cat data/edition.txt) - 1 )) > data/edition.txt
-  py scripts/kobo-digest-build.py
+  py /frontpage.py
 fi
 
 # One file per edition, so News Downloader sees each edition as new.
