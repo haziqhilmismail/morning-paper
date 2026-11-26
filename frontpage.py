@@ -14,6 +14,7 @@ import importlib.util
 import io
 import re
 import sys
+import textwrap
 import urllib.request
 from collections import Counter
 from datetime import datetime
@@ -23,6 +24,15 @@ from PIL import Image, ImageOps
 
 MAX_ITEMS = 6  # stories under the lead; the rest stay in the contents
 MIN_PHOTO_WIDTH = 300  # smaller images are icons and logos
+LEAD_BOX, ITEM_BOX = (1000, 560), (500, 180)
+# Screen 1 at the Kindle's KOReader settings (1072 x 1448, 300 dpi, font size 20, margins 30/15/15,
+# status bar on), measured in the KOReader emulator. The lead photo gets the height that is left,
+# so screen 1 is full. A table row never splits, so if screen 1 overflows, both stories move to screen 2.
+SCREEN_1_END = 1375  # text area bottom (about 1398) less a safety band for a wrong line estimate
+FIXED_PX = 485  # masthead, dateline, kicker, meta lines and rules
+LEAD_LINE_PX, DEK_LINE_PX, ITEM_LINE_PX = 58, 40, 28
+LEAD_CHARS, DEK_CHARS, ITEM_CHARS = 36, 66, 42  # characters on one line
+LEAD_SCALE, ITEM_SCALE = 0.962, 0.93  # rendered width / photo box width
 FALLBACK_TOPIC = "More reads"
 
 CSS = """
@@ -124,6 +134,18 @@ def columns(picked: list[dict]) -> list[list[tuple[str, list[dict]]]]:
     return cols
 
 
+def lead_photo_height(lead: dict, first: list[dict]) -> int:
+    """Photo box height for the lead, in image px, that fills screen 1 under these headlines."""
+    def lines(text: str, width: int) -> int:
+        return len(textwrap.wrap(text, width))
+
+    column = max((ITEM_LINE_PX * lines(s["title"], ITEM_CHARS) + ITEM_SCALE * (s["photo"][2] if s.get("photo") else 0)
+                  for s in first), default=0)
+    left = (SCREEN_1_END - FIXED_PX - LEAD_LINE_PX * lines(lead["title"], LEAD_CHARS)
+            - DEK_LINE_PX * lines(lead["dek"], DEK_CHARS) - column)
+    return max(200, min(LEAD_BOX[1], int(left / LEAD_SCALE)))
+
+
 def photo(url: str | None, box: tuple[int, int], user_agent: str) -> "Image.Image | None":
     """Grayscale on white, scaled down to fit inside box with its own aspect ratio: no crop, no upscale."""
     if not url:
@@ -213,14 +235,15 @@ def text_front_page(kdb, book, articles: list[dict]):
         if im:
             buf = io.BytesIO()
             im.save(buf, "JPEG", quality=82)
-            s["photo"] = (f"images/front_{len(images)}.jpg", round(im.width / box[0] * 100))
+            s["photo"] = (f"images/front_{len(images)}.jpg", round(im.width / box[0] * 100), im.height)
             images[s["photo"][0]] = buf.getvalue()
         return bool(im)
 
-    lead_has_photo = add_photo(lead, (1000, 360))
-    lead["dek"] = dek(lead["html"], 2, 220) if lead_has_photo else dek(lead["html"], 4, 420)
     for col in screens[0] + screens[1]:  # one photo per column on each screen
-        next((s for _, items in col for s in items if add_photo(s, (500, 180))), None)
+        next((s for _, items in col for s in items if add_photo(s, ITEM_BOX)), None)
+    lead["dek"] = dek(lead["html"], 2, 220)
+    if not add_photo(lead, (LEAD_BOX[0], lead_photo_height(lead, picked[:2]))):
+        lead["dek"] = dek(lead["html"], 4, 420)
     paper = (kdb.PAPER_TITLE, kdb.PAPER_TAGLINE, kdb.EDITION_FILE.read_text().strip())
     page_html = render(stories, lead, screens, len(stories) - 1 - len(picked), paper, datetime.now())
 
@@ -267,4 +290,8 @@ if __name__ == "__main__":
     assert [(x["topic"], x["rank"]) for x in by_importance(s)] == [("B", 1), ("A", 2), ("A", 1), ("C", 2), ("A", 0)]
     assert [x["topic"] for x in pick(by_importance(s))] == ["B", "A", "C", "A", "A"]
     assert [[t for t, _ in c] for c in columns(pick(by_importance(s)))] == [["B", "C"], ["A"]]
+    lead = {"title": "Cards on the table: The good and bad of Anwar's 4 years in power", "dek": "x " * 95}
+    first = [{"title": "Are mental illnesses universal, or are they culturally specific?", "photo": ("", 0, 180)}]
+    assert lead_photo_height(lead, first) == 447
+    assert lead_photo_height({"title": "x " * 200, "dek": ""}, first) == 200
     sys.exit(main())
