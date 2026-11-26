@@ -20,7 +20,8 @@ docker build -q -t morning-paper . >/dev/null
 py() {
   docker run --rm --memory 1g --user "$(id -u):$(id -g)" \
     -v "$PWD/upstream:/app:ro" -v "$PWD/data:/data" -v "$PWD/config.json:/config.json:ro" \
-    -e KOBO_PAPER_CONFIG=/config.json -e TZ morning-paper python "$1"
+    -v "$PWD/frontpage.py:/frontpage.py:ro" \
+    -e KOBO_PAPER_CONFIG=/config.json -e TZ morning-paper python "$@"
 }
 
 python3 feeds.py || echo "some feeds failed"
@@ -37,6 +38,8 @@ if [ -n "$pruned" ]; then
   echo $(( $(cat data/edition.txt) - 1 )) > data/edition.txt
   py scripts/kobo-digest-build.py
 fi
+# The EPUB stays as upstream built it when this fails: it writes a new file and then replaces the old one.
+py /frontpage.py /data || echo "text front page failed; keeping the image front page"
 
 # One file per edition, so News Downloader sees each edition as new.
 day=$(date +%F)

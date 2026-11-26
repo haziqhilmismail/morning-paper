@@ -58,7 +58,7 @@ def unpack(epub: Path, out: Path) -> None:
                  if i.filename.startswith("EPUB/") and not i.is_dir()}
         articles = sorted((n for n in files if re.fullmatch(r"art_\d+\.xhtml", n)), key=lambda n: int(n[4:-6]))
         for name, info in files.items():
-            if not (name in articles or name == "frontpage.xhtml" or name.startswith("images/")):
+            if not (name in articles or name == "frontpage.xhtml" or name.startswith(("images/", "fonts/"))):
                 continue
             if ".." in Path(name).parts:
                 raise ValueError(f"unsafe path in {epub.name}: {info.filename}")
