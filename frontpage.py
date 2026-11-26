@@ -24,7 +24,6 @@ from PIL import Image, ImageOps
 MAX_ITEMS = 6  # stories under the lead; the rest stay in the contents
 MIN_PHOTO_WIDTH = 300  # smaller images are icons and logos
 FALLBACK_TOPIC = "More reads"
-UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 
 CSS = """
 body { margin: 0; color: #000; }
@@ -124,26 +123,31 @@ def columns(picked: list[dict]) -> list[list[tuple[str, list[dict]]]]:
     return cols
 
 
-def photo(url: str | None, box: tuple[int, int]) -> "Image.Image | None":
+def photo(url: str | None, box: tuple[int, int], user_agent: str) -> "Image.Image | None":
     """Grayscale on white, scaled down to fit inside box with its own aspect ratio: no crop, no upscale."""
     if not url:
         return None
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=20) as r:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": user_agent}), timeout=20) as r:
             im = Image.open(io.BytesIO(r.read(10_000_000)))
+            im.draft("RGB", box)  # a JPEG decodes at a smaller size: a big photo stays far below the 1 GB limit
             im.load()
     except Exception as e:  # a missing photo only drops the photo
         print(f"front page: no photo ({type(e).__name__}): {url[:80]}")
         return None
     if im.width < MIN_PHOTO_WIDTH:
         return None
+    if im.mode not in ("RGB", "RGBA", "L", "LA"):
+        im = im.convert("RGBA")
+    im.thumbnail(box, Image.LANCZOS)
+    rgba = im.convert("RGBA")
     flat = Image.new("RGB", im.size, "white")
-    flat.paste(im.convert("RGBA"), mask=im.convert("RGBA"))
-    gray = ImageOps.grayscale(flat)
-    return gray if gray.width <= box[0] and gray.height <= box[1] else ImageOps.contain(gray, box, Image.LANCZOS)
+    flat.paste(rgba, mask=rgba)
+    return ImageOps.grayscale(flat)
 
 
-def render(stories: list[dict], lead: dict, cols: list, more: int, edition: str, today: datetime) -> str:
+def render(stories: list[dict], lead: dict, cols: list, more: int, paper: tuple[str, str, str], today: datetime) -> str:
+    title, tagline, edition = paper
     e = html.escape
     count = Counter(s["topic"] for s in stories)
 
@@ -164,13 +168,13 @@ def render(stories: list[dict], lead: dict, cols: list, more: int, edition: str,
 
     more_text = f" · {more} more read{'s' * (more > 1)} in the contents" if more > 0 else ""
     return f"""<html><head></head><body><div class="paper">
-<h1 class="mast">The Morning Paper</h1>
-<p class="tag">All the Reads Worth Your Time</p>
+<h1 class="mast">{e(title)}</h1>
+<p class="tag">{e(tagline)}</p>
 <table class="dateline"><tr><td>Vol. I · No. {e(edition)}</td>
 <td style="text-align:center">{today:%A %-d %B %Y}</td>
 <td style="text-align:right">{len(stories)} reads · {total_time(sum(s["minutes"] for s in stories))}</td></tr></table>
 <div class="lead{"" if lead.get("photo") else " text"}">
-<p class="kicker">{e(lead["topic"])}</p>
+{f'<p class="kicker">{e(lead["topic"])}</p>' if lead["run"] else ""}
 <h2><a href="{lead["href"]}">{e(lead["title"])}</a></h2>
 {img(lead)}
 <p class="dek">{e(lead["dek"])}</p>
@@ -201,7 +205,7 @@ def text_front_page(kdb, book, articles: list[dict]):
     images = {}
 
     def add_photo(s: dict, box: tuple[int, int]) -> bool:
-        im = photo(s.get("image"), box)
+        im = photo(s.get("image"), box, kdb.ARTICLE_USER_AGENT)
         if im:
             buf = io.BytesIO()
             im.save(buf, "JPEG", quality=82)
@@ -214,8 +218,8 @@ def text_front_page(kdb, book, articles: list[dict]):
     for col in cols:
         for _, items in col:
             next((s for s in items if add_photo(s, (500, 340))), None)  # one photo per section
-    page_html = render(stories, lead, cols, len(stories) - 1 - len(picked),
-                       kdb.EDITION_FILE.read_text().strip(), datetime.now())
+    paper = (kdb.PAPER_TITLE, kdb.PAPER_TAGLINE, kdb.EDITION_FILE.read_text().strip())
+    page_html = render(stories, lead, cols, len(stories) - 1 - len(picked), paper, datetime.now())
 
     faces = [("Masthead", "normal", kdb.MAST_FONT), ("PT Serif", "normal", kdb.SERIF_R), ("PT Serif", "bold", kdb.SERIF_B)]
     fonts = [(family, weight, Path(p)) for family, weight, p in faces if Path(p).exists()]
@@ -227,7 +231,7 @@ def text_front_page(kdb, book, articles: list[dict]):
         book.add_item(epub.EpubItem(uid=f"font_{i}", file_name=f"fonts/{p.name}", media_type="font/ttf",
                                     content=p.read_bytes()))
     book.add_item(epub.EpubItem(uid="front_css", file_name="style/front.css", media_type="text/css", content=css))
-    fp = epub.EpubHtml(title="The Morning Paper", file_name="frontpage.xhtml", lang="en")
+    fp = epub.EpubHtml(title=kdb.PAPER_TITLE, file_name="frontpage.xhtml", lang="en")
     fp.content = page_html
     fp.add_link(href="style/front.css", rel="stylesheet", type="text/css")
     book.add_item(fp)
