@@ -215,9 +215,8 @@ def text_front_page(kdb, book, articles: list[dict]):
 
     lead_has_photo = add_photo(lead, (1000, 560))
     lead["dek"] = dek(lead["html"], 2, 220) if lead_has_photo else dek(lead["html"], 4, 420)
-    for col in cols:
-        for _, items in col:
-            next((s for s in items if add_photo(s, (500, 340))), None)  # one photo per section
+    for col in cols:  # one photo per column keeps the page near one screen
+        next((s for _, items in col for s in items if add_photo(s, (500, 340))), None)
     paper = (kdb.PAPER_TITLE, kdb.PAPER_TAGLINE, kdb.EDITION_FILE.read_text().strip())
     page_html = render(stories, lead, cols, len(stories) - 1 - len(picked), paper, datetime.now())
 
