@@ -53,6 +53,7 @@ h1, h2, h3, p { margin: 0; color: #000; }
 .cols td.col { width: 50%; vertical-align: top; padding: 0; }
 .cols td.left { padding-right: 0.6em; border-right: 1px solid #000; }
 .cols td.right { padding-left: 0.6em; }
+.cols.next { page-break-before: always; margin-top: 0; }
 .sec { margin-bottom: 0.5em; }
 .sec .kicker { border-bottom: 1px solid #000; padding-bottom: 0.2em; }
 .count { float: right; }
@@ -146,7 +147,7 @@ def photo(url: str | None, box: tuple[int, int], user_agent: str) -> "Image.Imag
     return ImageOps.grayscale(flat)
 
 
-def render(stories: list[dict], lead: dict, cols: list, more: int, paper: tuple[str, str, str], today: datetime) -> str:
+def render(stories: list[dict], lead: dict, screens: list[list], more: int, paper: tuple[str, str, str], today: datetime) -> str:
     title, tagline, edition = paper
     e = html.escape
     count = Counter(s["topic"] for s in stories)
@@ -180,7 +181,8 @@ def render(stories: list[dict], lead: dict, cols: list, more: int, paper: tuple[
 <p class="dek">{e(lead["dek"])}</p>
 <table class="meta"><tr><td>{e(lead["domain"])}</td><td class="r">{lead["minutes"]} min · p. {lead["page"]}</td></tr></table>
 </div>
-<table class="cols"><tr><td class="col left">{column(cols[0])}</td><td class="col right">{column(cols[1])}</td></tr></table>
+{"".join(f'<table class="cols{" next" * (i > 0)}"><tr><td class="col left">{column(c[0])}</td>'
+         f'<td class="col right">{column(c[1])}</td></tr></table>' for i, c in enumerate(screens) if c[0] or c[1])}
 <p class="foot">Tap a headline to open it{more_text}</p>
 </div></body></html>"""
 
@@ -200,7 +202,9 @@ def text_front_page(kdb, book, articles: list[dict]):
     ranked = by_importance(stories)
     lead = ranked[0]
     picked = pick(ranked[1:])
-    cols = columns(picked)
+    # The first screen has the lead and one story in each column; the others start on the next screen.
+    first = [[(s["topic"], [s])] for s in picked[:2]]
+    screens = [first + [[]] * (2 - len(first)), columns(picked[2:])]
 
     images = {}
 
@@ -215,10 +219,10 @@ def text_front_page(kdb, book, articles: list[dict]):
 
     lead_has_photo = add_photo(lead, (1000, 380))
     lead["dek"] = dek(lead["html"], 2, 220) if lead_has_photo else dek(lead["html"], 4, 420)
-    for col in cols:  # one photo per column keeps the page near one screen
+    for col in screens[0] + screens[1]:  # one photo per column on each screen
         next((s for _, items in col for s in items if add_photo(s, (500, 220))), None)
     paper = (kdb.PAPER_TITLE, kdb.PAPER_TAGLINE, kdb.EDITION_FILE.read_text().strip())
-    page_html = render(stories, lead, cols, len(stories) - 1 - len(picked), paper, datetime.now())
+    page_html = render(stories, lead, screens, len(stories) - 1 - len(picked), paper, datetime.now())
 
     faces = [("Masthead", "normal", kdb.MAST_FONT), ("PT Serif", "normal", kdb.SERIF_R), ("PT Serif", "bold", kdb.SERIF_B)]
     fonts = [(family, weight, Path(p)) for family, weight, p in faces if Path(p).exists()]
